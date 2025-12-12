@@ -5,7 +5,7 @@ use passgen::prelude::*;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    let count = cli.count.unwrap_or(1);
+    let count = cli.count;
 
     let mut passwords = Vec::new();
 

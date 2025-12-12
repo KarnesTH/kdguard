@@ -5,13 +5,14 @@ mod generator;
 #[derive(Parser)]
 #[command(
     version,
-    about = "A simple password generator with a password length between 8 and 64."
+    about = "A CLI tool to generate secure and random passwords",
+    author = "KarnesTH <p_haehnel@hotmail.de>"
 )]
 pub struct Cli {
-    #[clap(short, long, help = "Length of your password")]
+    #[clap(short, long, help = "Length of your password", default_value_t = 16)]
     pub length: usize,
-    #[clap(short, long, help = "Amount of passwords")]
-    pub count: Option<usize>,
+    #[clap(short, long, help = "Amount of passwords", default_value_t = 1)]
+    pub count: usize,
     #[clap(
         short,
         long,
