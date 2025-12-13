@@ -4,6 +4,18 @@ use passgen::prelude::*;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
+    if let Some(commands) = cli.commands {
+        match commands {
+            Commands::Validate => {
+                println!("Validating password...");
+            }
+            Commands::Check { password, detailed } => {
+                HealthCheck::check_password(&password, detailed)?;
+            }
+        }
+        return Ok(());
+    }
+
     let count = cli.count;
 
     let mut passwords = Vec::new();
@@ -36,17 +48,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         for password in passwords {
             println!("  {}", password);
-        }
-    }
-
-    if let Some(commands) = cli.commands {
-        match commands {
-            Commands::Validate => {
-                println!("Validating password...");
-            }
-            Commands::Check => {
-                println!("Checking password...");
-            }
         }
     }
 

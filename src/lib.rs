@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod generator;
+mod health_check;
 
 #[derive(Parser)]
 #[command(
@@ -31,10 +32,16 @@ pub enum Commands {
     #[command(about = "Validate a password")]
     Validate,
     #[command(about = "Check a password")]
-    Check,
+    Check {
+        #[clap(short, long, help = "Password to check")]
+        password: String,
+        #[clap(short, long, help = "Show detailed analysis", default_value_t = false)]
+        detailed: bool,
+    },
 }
 
 pub mod prelude {
     pub use crate::generator::Generator;
+    pub use crate::health_check::HealthCheck;
     pub use crate::{Cli, Commands};
 }
