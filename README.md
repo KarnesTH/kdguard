@@ -92,6 +92,8 @@ passgen -l 24 -c 3 -s -o mypasswords.txt
 
 ## Building from source
 
+**Prerequisites:** You need to have [Rust](https://www.rust-lang.org/tools/install) installed.
+
 ```bash
 git clone https://github.com/KarnesTH/passgen.git
 cd passgen
@@ -104,5 +106,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Author
 
-KarnesTH <p_haehnel@hotmail.de>
+Developed with ❤️ by KarnesTH
 
