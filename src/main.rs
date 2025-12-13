@@ -1,4 +1,3 @@
-use chrono::Local;
 use clap::Parser;
 use passgen::prelude::*;
 
@@ -20,9 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let file_name = if let Some(output) = cli.output {
             output
         } else {
-            let today = Local::now();
-            let formatted_date = today.format("%d_%m_%Y").to_string();
-            format!("passwords_{}.txt", formatted_date)
+            "passgen.txt".to_string()
         };
 
         let output_path = base_path.join(file_name);
@@ -31,9 +28,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("Passwords saved to: {}", output_path.display());
     } else {
-        println!("Your generated passwords:");
+        if count > 1 {
+            println!("\x1b[1;36mYour generated passwords:\x1b[0m");
+        } else {
+            println!("\x1b[1;36mYour generated password:\x1b[0m");
+        }
+
         for password in passwords {
-            println!("{}", password);
+            println!("  {}", password);
         }
     }
 
