@@ -25,7 +25,7 @@ curl -LsSf https://raw.githubusercontent.com/KarnesTH/passgen/main/install.sh | 
 ### Using install script (Windows PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/KarnesTH/passgen/main/install.ps1 | iex
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/KarnesTH/passgen/main/install.ps1 | iex"
 ```
 
 ### Manual installation
