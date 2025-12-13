@@ -33,7 +33,9 @@ pub enum Commands {
     Validate,
     #[command(about = "Check a password")]
     Check {
-        #[clap(short, long, help = "Password to check")]
+        #[clap(
+            help = "The password to check. Use '' for passwords with special characters like '$', '!', '(', ')'"
+        )]
         password: String,
         #[clap(short, long, help = "Show detailed analysis", default_value_t = false)]
         detailed: bool,

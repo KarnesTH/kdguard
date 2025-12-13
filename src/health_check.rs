@@ -1,5 +1,7 @@
 pub struct HealthCheck;
 
+const COMMON_PASSWORDS: &str = include_str!("../data/10k-most-common-passwords.txt");
+
 #[derive(Debug, Clone)]
 pub struct PasswordScore {
     pub total: u32,
@@ -218,6 +220,8 @@ impl HealthCheck {
 
     /// Check if a given password has common patterns
     ///
+    /// Checks if the password (or parts of it) appear in the common passwords list
+    ///
     /// # Arguments
     ///
     /// * `password`: The password to check
@@ -226,16 +230,18 @@ impl HealthCheck {
     ///
     /// Returns true if the password has common patterns, otherwise false
     fn has_common_patterns(password: &str) -> bool {
-        let common_patterns = [
-            "123", "234", "345", "456", "567", "678", "789", "012", "abc", "bcd", "cde", "def",
-            "efg", "fgh", "ghi", "hij", "ijk", "jkl", "klm", "lmn", "mno", "nop", "opq", "pqr",
-            "qrs", "rst", "stu", "tuv", "uvw", "vwx", "wxy", "xyz", "qwerty", "asdf", "zxcv",
-            "password", "passwort",
-        ];
-
         let password_lower = password.to_lowercase();
-        for pattern in &common_patterns {
-            if password_lower.contains(pattern) {
+
+        for line in COMMON_PASSWORDS.lines() {
+            let common_pw = line.trim().to_lowercase();
+            if common_pw.is_empty() {
+                continue;
+            }
+
+            if password_lower == common_pw
+                || password_lower.contains(&common_pw)
+                || common_pw.contains(&password_lower)
+            {
                 return true;
             }
         }
@@ -417,14 +423,14 @@ impl HealthCheck {
             if !analysis.warnings.is_empty() {
                 println!("\n\x1b[1;31mWarnings:\x1b[0m");
                 for warning in &analysis.warnings {
-                    println!("  ⚠ {}", warning);
+                    println!("  ⚠️\t{}", warning);
                 }
             }
 
             if !analysis.suggestions.is_empty() && analysis.score.total < 80 {
                 println!("\n\x1b[1;33mSuggestions:\x1b[0m");
                 for suggestion in &analysis.suggestions {
-                    println!("  • {}", suggestion);
+                    println!("  💡\t{}", suggestion);
                 }
             }
         }
