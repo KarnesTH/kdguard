@@ -1,7 +1,7 @@
 # passgen
 
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
-[![Release](https://img.shields.io/github/v/release/KarnesTH/passgen)](https://github.com/KarnesTH/passgen/releases)
+[![Release](https://img.shields.io/github/v/release/KarnesTH/passgen)](https://github.com/KarnesTH/passgen/releases/latest)
 [![CI](https://github.com/KarnesTH/passgen/workflows/CI/badge.svg)](https://github.com/KarnesTH/passgen/actions)
 
 A CLI tool to generate secure and random passwords.
