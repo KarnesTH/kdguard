@@ -56,8 +56,8 @@ function Main {
     # Download URL with version number in filename
     $downloadUrl = "https://github.com/$REPO/releases/download/$tag/passgen_${version}-${platform}.exe"
     
-    # Create install directory
-    $installDir = Join-Path $env:USERPROFILE ".local\bin"
+    # Create install directory (using Windows standard LocalAppData)
+    $installDir = Join-Path $env:LOCALAPPDATA "bin"
     if (-not (Test-Path $installDir)) {
         New-Item -ItemType Directory -Path $installDir -Force | Out-Null
     }
