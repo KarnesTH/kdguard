@@ -1,6 +1,6 @@
 [package]
 name = "passgen"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "A CLI tool to generate secure and random passwords"
 authors = ["KarnesTH <p_haehnel@hotmail.de>"]

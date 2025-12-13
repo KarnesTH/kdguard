@@ -6,9 +6,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(commands) = cli.commands {
         match commands {
-            Commands::Validate => {
-                println!("Validating password...");
-            }
             Commands::Check { password, detailed } => {
                 HealthCheck::check_password(&password, detailed)?;
             }

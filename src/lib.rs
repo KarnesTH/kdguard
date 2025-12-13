@@ -29,8 +29,6 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Validate a password")]
-    Validate,
     #[command(about = "Check a password")]
     Check {
         #[clap(
