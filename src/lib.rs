@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 mod generator;
 
@@ -9,6 +9,8 @@ mod generator;
     author = "KarnesTH <p_haehnel@hotmail.de>"
 )]
 pub struct Cli {
+    #[clap(subcommand)]
+    pub commands: Option<Commands>,
     #[clap(short, long, help = "Length of your password", default_value_t = 16)]
     pub length: usize,
     #[clap(short, long, help = "Amount of passwords", default_value_t = 1)]
@@ -23,7 +25,16 @@ pub struct Cli {
     #[clap(short, long, help = "Output name to save a file (e.g. passgen.txt)")]
     pub output: Option<String>,
 }
+
+#[derive(Subcommand)]
+pub enum Commands {
+    #[command(about = "Validate a password")]
+    Validate,
+    #[command(about = "Check a password")]
+    Check,
+}
+
 pub mod prelude {
-    pub use crate::Cli;
     pub use crate::generator::Generator;
+    pub use crate::{Cli, Commands};
 }
