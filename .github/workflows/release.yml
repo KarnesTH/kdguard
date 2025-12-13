@@ -6,24 +6,40 @@ on:
       - 'v*'
 
 jobs:
+  get-version:
+    name: Get Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Get tag name
+        id: tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+  
   release:
     name: Release ${{ matrix.target }}
+    needs: get-version
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact_name: passgen-linux-x86_64
+            platform: linux-x86_64
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            artifact_name: passgen-windows-x86_64.exe
+            platform: windows-x86_64
           - target: x86_64-apple-darwin
             os: macos-latest
-            artifact_name: passgen-macos-x86_64
+            platform: macos-x86_64
           - target: aarch64-apple-darwin
             os: macos-latest
-            artifact_name: passgen-macos-aarch64
+            platform: macos-aarch64
     
     steps:
       - uses: actions/checkout@v4
@@ -56,40 +72,49 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
           fi
       
+      - name: Set artifact name
+        id: artifact
+        shell: bash
+        run: |
+          VERSION="${{ needs.get-version.outputs.version }}"
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            echo "name=passgen_${VERSION}-${{ matrix.platform }}.exe" >> $GITHUB_OUTPUT
+          else
+            echo "name=passgen_${VERSION}-${{ matrix.platform }}" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Prepare artifact (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
+          $artifactName = "${{ steps.artifact.outputs.name }}"
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/passgen.exe" "release/${{ matrix.artifact_name }}"
+          Copy-Item "target/${{ matrix.target }}/release/passgen.exe" "release/$artifactName"
       
       - name: Prepare artifact (Unix)
         if: matrix.os != 'windows-latest'
         shell: bash
         run: |
+          ARTIFACT_NAME="${{ steps.artifact.outputs.name }}"
           mkdir -p release
-          cp target/${{ matrix.target }}/release/passgen release/${{ matrix.artifact_name }}
-          chmod +x release/${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/passgen "release/${ARTIFACT_NAME}"
+          chmod +x "release/${ARTIFACT_NAME}"
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: release/${{ matrix.artifact_name }}
+          name: ${{ steps.artifact.outputs.name }}
+          path: release/*
           retention-days: 90
   
   create-release:
     name: Create Release
-    needs: release
+    needs: [get-version, release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Get tag name
-        id: tag
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -99,8 +124,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: Release ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ needs.get-version.outputs.tag }}
+          name: Release ${{ needs.get-version.outputs.tag }}
           files: artifacts/**/*
           generate_release_notes: true
         env:

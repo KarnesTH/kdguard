@@ -41,33 +41,34 @@ detect_platform() {
     fi
 }
 
-# Get latest release version
-get_latest_version() {
-    local version=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    if [ -z "$version" ]; then
+# Get latest release tag
+get_latest_tag() {
+    local tag=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$tag" ]; then
         echo -e "${RED}Error: Failed to get latest version${NC}" >&2
         exit 1
     fi
-    echo "$version"
+    echo "$tag"
+}
+
+# Extract version from tag (remove 'v' prefix)
+get_version_from_tag() {
+    local tag="$1"
+    echo "${tag#v}"
 }
 
 # Download and install
 main() {
     local platform=$(detect_platform)
-    local version=$(get_latest_version)
+    local tag=$(get_latest_tag)
+    local version=$(get_version_from_tag "$tag")
     
-    echo -e "${GREEN}Installing passgen ${version} for ${platform}...${NC}"
+    echo -e "${GREEN}Installing passgen ${tag} for ${platform}...${NC}"
     
-    # Determine binary name
-    local binary_name="${BINARY_NAME}"
+    # Download URL with version number in filename
+    local download_url="https://github.com/${REPO}/releases/download/${tag}/passgen_${version}-${platform}"
     if [ "$platform" = "windows-x86_64" ]; then
-        binary_name="${BINARY_NAME}.exe"
-    fi
-    
-    # Download URL
-    local download_url="https://github.com/${REPO}/releases/download/${version}/passgen-${platform}"
-    if [ "$platform" = "windows-x86_64" ]; then
-        download_url="https://github.com/${REPO}/releases/download/${version}/passgen-${platform}.exe"
+        download_url="https://github.com/${REPO}/releases/download/${tag}/passgen_${version}-${platform}.exe"
     fi
     
     # Create install directory

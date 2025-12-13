@@ -31,7 +31,13 @@ function Get-Platform {
 function Get-LatestVersion {
     try {
         $response = Invoke-RestMethod -Uri "https://api.github.com/repos/$REPO/releases/latest"
-        return $response.tag_name
+        $tag = $response.tag_name
+        # Remove 'v' prefix if present
+        $version = $tag -replace '^v', ''
+        return @{
+            Tag = $tag
+            Version = $version
+        }
     } catch {
         Write-ColorOutput Red "Error: Failed to get latest version"
         exit 1
@@ -41,12 +47,14 @@ function Get-LatestVersion {
 # Main installation
 function Main {
     $platform = Get-Platform
-    $version = Get-LatestVersion
+    $versionInfo = Get-LatestVersion
+    $tag = $versionInfo.Tag
+    $version = $versionInfo.Version
     
-    Write-ColorOutput Green "Installing passgen $version for $platform..."
+    Write-ColorOutput Green "Installing passgen $tag for $platform..."
     
-    # Download URL
-    $downloadUrl = "https://github.com/$REPO/releases/download/$version/passgen-$platform.exe"
+    # Download URL with version number in filename
+    $downloadUrl = "https://github.com/$REPO/releases/download/$tag/passgen_${version}-${platform}.exe"
     
     # Create install directory
     $installDir = Join-Path $env:USERPROFILE ".local\bin"
