@@ -57,7 +57,7 @@ function Main {
     $downloadUrl = "https://github.com/$REPO/releases/download/$tag/kdguard_${version}-${platform}.exe"
     
     # Create install directory (using Windows standard LocalAppData)
-    $installDir = Join-Path $env:LOCALAPPDATA "bin"
+    $installDir = Join-Path $env:LOCALAPPDATA "Karnes Development/kdguard"
     if (-not (Test-Path $installDir)) {
         New-Item -ItemType Directory -Path $installDir -Force | Out-Null
     }
