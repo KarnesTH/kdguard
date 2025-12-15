@@ -8,8 +8,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # GitHub repository
-REPO="KarnesTH/passgen"
-BINARY_NAME="passgen"
+REPO="KarnesTH/kdguard"
+BINARY_NAME="kdguard"
 
 # Detect OS and architecture
 detect_platform() {
@@ -63,12 +63,12 @@ main() {
     local tag=$(get_latest_tag)
     local version=$(get_version_from_tag "$tag")
     
-    echo -e "${GREEN}Installing passgen ${tag} for ${platform}...${NC}"
+    echo -e "${GREEN}Installing kdguard ${tag} for ${platform}...${NC}"
     
     # Download URL with version number in filename
-    local download_url="https://github.com/${REPO}/releases/download/${tag}/passgen_${version}-${platform}"
+    local download_url="https://github.com/${REPO}/releases/download/${tag}/kdguard_${version}-${platform}"
     if [ "$platform" = "windows-x86_64" ]; then
-        download_url="https://github.com/${REPO}/releases/download/${tag}/passgen_${version}-${platform}.exe"
+        download_url="https://github.com/${REPO}/releases/download/${tag}/kdguard_${version}-${platform}.exe"
     fi
     
     # Create install directory
@@ -92,8 +92,8 @@ main() {
         echo -e "${GREEN}export PATH=\"\${HOME}/.local/bin:\${PATH}\"${NC}"
     fi
     
-    echo -e "${GREEN}Successfully installed passgen to ${install_dir}/${BINARY_NAME}${NC}"
-    echo -e "${GREEN}Run 'passgen --help' to get started${NC}"
+    echo -e "${GREEN}Successfully installed kdguard to ${install_dir}/${BINARY_NAME}${NC}"
+    echo -e "${GREEN}Run 'kdguard --help' to get started${NC}"
 }
 
 main "$@"

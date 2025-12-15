@@ -1,8 +1,8 @@
-# passgen
+# kdguard
 
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
-[![Release](https://img.shields.io/github/v/release/KarnesTH/passgen)](https://github.com/KarnesTH/passgen/releases/latest)
-[![CI](https://github.com/KarnesTH/passgen/workflows/CI/badge.svg)](https://github.com/KarnesTH/passgen/actions)
+[![Release](https://img.shields.io/github/v/release/KarnesTH/kdguard)](https://github.com/KarnesTH/kdguard/releases/latest)
+[![CI](https://github.com/KarnesTH/kdguard/workflows/CI/badge.svg)](https://github.com/KarnesTH/kdguard/actions)
 
 A CLI tool to generate secure and random passwords.
 
@@ -24,67 +24,67 @@ A CLI tool to generate secure and random passwords.
 ### Using install script (Linux/macOS)
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/KarnesTH/passgen/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.sh | sh
 ```
 
 ### Using install script (Windows PowerShell)
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/KarnesTH/passgen/main/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.ps1 | iex"
 ```
 
 ### Manual installation
 
-Download the latest binary from [GitHub Releases](https://github.com/KarnesTH/passgen/releases) for your platform.
+Download the latest binary from [GitHub Releases](https://github.com/KarnesTH/kdguard/releases) for your platform.
 
 ## Usage
 
 ### Generate a single password (default length: 16)
 
 ```bash
-passgen
+kdguard
 ```
 
 ### Generate a password with custom length
 
 ```bash
-passgen -l 20
+kdguard -l 20
 ```
 
 ### Generate multiple passwords
 
 ```bash
-passgen -c 5
+kdguard -c 5
 ```
 
 ### Save password to file
 
 ```bash
-passgen -s
+kdguard -s
 ```
 
 ### Save password to custom file
 
 ```bash
-passgen -s -o mypasswords.txt
+kdguard -s -o mypasswords.txt
 ```
 
 ### Combine options
 
 ```bash
-passgen -l 24 -c 3 -s -o passwords.txt
+kdguard -l 24 -c 3 -s -o passwords.txt
 ```
 
 ### Check password strength
 
 ```bash
-passgen check 'YourPassword123!'
+kdguard check 'YourPassword123!'
 ```
 
 ### Check password with detailed analysis
 
 ```bash
-passgen check 'YourPassword123!' --detailed
+kdguard check 'YourPassword123!' --detailed
 ```
 
 **Note:** When checking passwords with special characters like `$`, `!`, `(`, `)`, use single quotes (`'`) to prevent shell interpretation.
@@ -96,7 +96,7 @@ passgen check 'YourPassword123!' --detailed
 - `-l, --length <LENGTH>` - Length of the password (default: 16, range: 8-64)
 - `-c, --count <COUNT>` - Number of passwords to generate (default: 1)
 - `-s, --save` - Save passwords to a file
-- `-o, --output <OUTPUT>` - Output filename when saving (default: passgen.txt)
+- `-o, --output <OUTPUT>` - Output filename when saving (default: kdguard.txt)
 
 ### Check Command Options
 
@@ -107,22 +107,22 @@ passgen check 'YourPassword123!' --detailed
 
 ```bash
 # Generate a 20-character password
-passgen -l 20
+kdguard -l 20
 
 # Generate 5 passwords of length 16
-passgen -c 5
+kdguard -c 5
 
 # Generate and save 3 passwords of length 24
-passgen -l 24 -c 3 -s -o mypasswords.txt
+kdguard -l 24 -c 3 -s -o mypasswords.txt
 
 # Check password strength
-passgen check 'MyPassword123!'
+kdguard check 'MyPassword123!'
 
 # Check password with detailed analysis
-passgen check 'MyPassword123!' --detailed
+kdguard check 'MyPassword123!' --detailed
 
 # Check password with special characters (use single quotes)
-passgen check '9$LyEq4#G+l3(P(O' --detailed
+kdguard check '9$LyEq4#G+l3(P(O' --detailed
 ```
 
 ## Password Health Check
@@ -155,8 +155,8 @@ The `check` command analyzes passwords using a comprehensive scoring system:
 **Prerequisites:** You need to have [Rust](https://www.rust-lang.org/tools/install) installed.
 
 ```bash
-git clone https://github.com/KarnesTH/passgen.git
-cd passgen
+git clone https://github.com/KarnesTH/kdguard.git
+cd kdguard
 cargo build --release
 ```
 

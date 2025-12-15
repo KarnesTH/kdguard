@@ -1,10 +1,10 @@
-# PowerShell install script for passgen
+# PowerShell install script for kdguard
 
 $ErrorActionPreference = "Stop"
 
 # GitHub repository
-$REPO = "KarnesTH/passgen"
-$BINARY_NAME = "passgen.exe"
+$REPO = "KarnesTH/kdguard"
+$BINARY_NAME = "kdguard.exe"
 
 # Colors for output
 function Write-ColorOutput($ForegroundColor) {
@@ -51,10 +51,10 @@ function Main {
     $tag = $versionInfo.Tag
     $version = $versionInfo.Version
     
-    Write-ColorOutput Green "Installing passgen $tag for $platform..."
+    Write-ColorOutput Green "Installing kdguard $tag for $platform..."
     
     # Download URL with version number in filename
-    $downloadUrl = "https://github.com/$REPO/releases/download/$tag/passgen_${version}-${platform}.exe"
+    $downloadUrl = "https://github.com/$REPO/releases/download/$tag/kdguard_${version}-${platform}.exe"
     
     # Create install directory (using Windows standard LocalAppData)
     $installDir = Join-Path $env:LOCALAPPDATA "bin"
@@ -82,8 +82,8 @@ function Main {
         Write-ColorOutput Green "Added to PATH. Please restart your terminal for changes to take effect."
     }
     
-    Write-ColorOutput Green "Successfully installed passgen to $installPath"
-    Write-ColorOutput Green "Run 'passgen --help' to get started"
+    Write-ColorOutput Green "Successfully installed kdguard to $installPath"
+    Write-ColorOutput Green "Run 'kdguard --help' to get started"
 }
 
 Main

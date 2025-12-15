@@ -23,7 +23,7 @@ pub struct Cli {
         default_value_t = false
     )]
     pub save: bool,
-    #[clap(short, long, help = "Output name to save a file (e.g. passgen.txt)")]
+    #[clap(short, long, help = "Output name to save a file (e.g. kdguard.txt)")]
     pub output: Option<String>,
 }
 

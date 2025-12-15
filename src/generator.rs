@@ -98,7 +98,7 @@ impl Generator {
             .truncate(true)
             .open(output_path)?;
         let header = format!(
-            "Generated with passgen\nDate: {}\nGenerated passwords:\n",
+            "Generated with kdguard\nDate: {}\nGenerated passwords:\n",
             Local::now().format("%d.%m.%Y %H:%M:%S")
         );
         file.write_all(header.as_bytes())?;

@@ -1,5 +1,5 @@
 use clap::Parser;
-use passgen::prelude::*;
+use kdguard::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let file_name = if let Some(output) = cli.output {
             output
         } else {
-            "passgen.txt".to_string()
+            "kdguard.txt".to_string()
         };
 
         let output_path = base_path.join(file_name);
