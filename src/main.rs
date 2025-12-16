@@ -2,13 +2,25 @@ use clap::Parser;
 use kdguard::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::load_config()?;
     let cli = Cli::parse();
 
     if let Some(commands) = cli.commands {
         match commands {
             Commands::Check { password, detailed } => {
                 HealthCheck::check_password(&password, detailed)?;
-            }
+            },
+            Commands::Config { commands } => {
+                match commands {
+                    ConfigCommands::Show => {
+                        println!("Default length: {}", config.general.default_length);
+                        println!("Language: {}", config.language.lang);
+                    },
+                    ConfigCommands::Edit => {
+                        println!("Editing configuration...");
+                    },
+                }
+            },
         }
         return Ok(());
     }

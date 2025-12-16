@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 mod generator;
 mod health_check;
+mod config;
 
 #[derive(Parser)]
 #[command(
@@ -38,10 +39,24 @@ pub enum Commands {
         #[clap(short, long, help = "Show detailed analysis", default_value_t = false)]
         detailed: bool,
     },
+    #[command(about = "Manage configuration")]
+    Config {
+        #[clap(subcommand)]
+        commands: ConfigCommands,
+    }
+}
+
+#[derive(Subcommand)]
+pub enum ConfigCommands {
+    #[command(about = "Show current configuration")]
+    Show,
+    #[command(about = "Edit configuration")]
+    Edit,
 }
 
 pub mod prelude {
     pub use crate::generator::Generator;
     pub use crate::health_check::HealthCheck;
-    pub use crate::{Cli, Commands};
+    pub use crate::{Cli, Commands, ConfigCommands};
+    pub use crate::config::Config;
 }
