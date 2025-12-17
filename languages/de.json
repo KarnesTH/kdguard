@@ -1,4 +1,29 @@
 {
+    "cli": {
+        "about": "Ein CLI Tool zum Generieren von sicheren und zufälligen Passwörtern",
+        "args": {
+            "length_help": "Länge des Passworts",
+            "count_help": "Anzahl der Passwörter",
+            "save_help": "Speichern der Passwörter in eine Datei",
+            "output_help": "Name der Datei zum Speichern der Passwörter (z.B. kdguard.txt)"
+        },
+        "cli_commands": {
+            "check_password": {
+                "about": "Passwort Überprüfung",
+                "password_help": "Das Passwort zum Überprüfen. Benutze '' für Passwörter mit Sonderzeichen wie '$', '!', '(', ')'",
+                "detailed_help": "Anzeigen der detaillierten Analyse"
+            },
+            "manage_config": {
+                "about": "Konfiguration Verwaltung",
+                "show_about": "Anzeigen der aktuellen Konfiguration",
+                "edit_about": "Bearbeiten der Konfiguration",
+                "edit_language_help": "Sprache der Konfiguration",
+                "edit_default_length_help": "Standardlänge der Passwörter",
+                "edit_default_count_help": "Standardanzahl der Passwörter",
+                "edit_auto_save_help": "Automatisches Speichern der Passwörter"
+            }
+        }
+    },
     "commands": {
         "generate": {
             "title": "Passwort Generierung"
@@ -52,7 +77,12 @@
             "subtitle_general": "Allgemeine Einstellungen",
             "subtitle_language": "Spracheinstellungen",
             "default_length": "Standardlänge: {{default_length}}",
+            "default_count": "Standardanzahl: {{default_count}}",
+            "auto_save": "Automatisches Speichern: {{auto_save}}",
             "language": "Sprache: {{language}}"
+        },
+        "edit": {
+            "success": "Konfiguration erfolgreich aktualisiert"
         }
     }
 }

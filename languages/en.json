@@ -1,4 +1,29 @@
 {
+    "cli": {
+        "about": "A CLI tool to generate secure and random passwords",
+        "args": {
+            "length_help": "Length of the password",
+            "count_help": "Number of passwords to generate",
+            "save_help": "Save passwords to a file",
+            "output_help": "Name of the file to save the passwords (e.g. kdguard.txt)"
+        },
+        "cli_commands": {
+            "check_password": {
+                "about": "Password Check",
+                "password_help": "The password to check. Use '' for passwords with special characters like '$', '!', '(', ')'",
+                "detailed_help": "Show detailed analysis"
+            },
+            "manage_config": {
+                "about": "Configuration Management",
+                "show_about": "Show current configuration",
+                "edit_about": "Edit configuration",
+                "edit_language_help": "Language of the configuration",
+                "edit_default_length_help": "Default length of the passwords",
+                "edit_default_count_help": "Default count of the passwords",
+                "edit_auto_save_help": "Auto save of the passwords"
+            }
+        }
+    },
     "commands": {
         "generate": {
             "title": "Password Generation"
@@ -52,7 +77,12 @@
             "subtitle_general": "General Settings",
             "subtitle_language": "Language Settings",
             "default_length": "Default Length: {{default_length}}",
+            "default_count": "Default Count: {{default_count}}",
+            "auto_save": "Auto Save: {{auto_save}}",
             "language": "Language: {{language}}"
+        },
+        "edit": {
+            "success": "Configuration successfully updated"
         }
     }
 }

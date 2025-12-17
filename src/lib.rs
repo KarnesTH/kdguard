@@ -1,45 +1,53 @@
 use clap::{Parser, Subcommand};
+use lazy_static::lazy_static;
+use lingua_i18n_rs::prelude::Lingua;
+
+use crate::config::Config;
 
 mod config;
 mod generator;
 mod health_check;
 
+lazy_static! {
+    pub static ref CONFIG: Config = Config::load_config().unwrap();
+}
+
 #[derive(Parser)]
 #[command(
     version,
-    about = "A CLI tool to generate secure and random passwords",
+    about = Lingua::t("cli.about", &[]).unwrap(),
     author = "KarnesTH <p_haehnel@hotmail.de>"
 )]
 pub struct Cli {
     #[clap(subcommand)]
     pub commands: Option<Commands>,
-    #[clap(short, long, help = "Length of your password", default_value_t = 16)]
+    #[clap(short, long, help = Lingua::t("cli.args.length_help", &[]).unwrap(), default_value_t = CONFIG.general.default_length)]
     pub length: usize,
-    #[clap(short, long, help = "Amount of passwords", default_value_t = 1)]
+    #[clap(short, long, help = Lingua::t("cli.args.count_help", &[]).unwrap(), default_value_t = CONFIG.general.default_count)]
     pub count: usize,
     #[clap(
         short,
         long,
-        help = "If you want to save the password to a file",
-        default_value_t = false
+        help = Lingua::t("cli.args.save_help", &[]).unwrap(),
+        default_value_t = CONFIG.general.auto_save
     )]
     pub save: bool,
-    #[clap(short, long, help = "Output name to save a file (e.g. kdguard.txt)")]
+    #[clap(short, long, help = Lingua::t("cli.args.output_help", &[]).unwrap())]
     pub output: Option<String>,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Check a password")]
+    #[command(about = Lingua::t("cli.cli_commands.check_password.about", &[]).unwrap())]
     Check {
         #[clap(
-            help = "The password to check. Use '' for passwords with special characters like '$', '!', '(', ')'"
+            help = Lingua::t("cli.cli_commands.check_password.password_help", &[]).unwrap()
         )]
         password: String,
-        #[clap(short, long, help = "Show detailed analysis", default_value_t = false)]
+        #[clap(short, long, help = Lingua::t("cli.cli_commands.check_password.detailed_help", &[]).unwrap(), default_value_t = false)]
         detailed: bool,
     },
-    #[command(about = "Manage configuration")]
+    #[command(about = Lingua::t("cli.cli_commands.manage_config.about", &[]).unwrap())]
     Config {
         #[clap(subcommand)]
         commands: ConfigCommands,
@@ -48,13 +56,23 @@ pub enum Commands {
 
 #[derive(Subcommand)]
 pub enum ConfigCommands {
-    #[command(about = "Show current configuration")]
+    #[command(about = Lingua::t("cli.cli_commands.manage_config.show_about", &[]).unwrap())]
     Show,
-    #[command(about = "Edit configuration")]
-    Edit,
+    #[command(about = Lingua::t("cli.cli_commands.manage_config.edit_about", &[]).unwrap())]
+    Edit {
+        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_language_help", &[]).unwrap())]
+        lang: Option<String>,
+        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_default_length_help", &[]).unwrap())]
+        password_length: Option<usize>,
+        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_default_count_help", &[]).unwrap())]
+        count: Option<usize>,
+        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_auto_save_help", &[]).unwrap())]
+        auto_save: Option<bool>,
+    },
 }
 
 pub mod prelude {
+    pub use super::CONFIG;
     pub use crate::config::Config;
     pub use crate::generator::Generator;
     pub use crate::health_check::HealthCheck;

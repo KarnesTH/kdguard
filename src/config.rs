@@ -12,6 +12,8 @@ pub struct Config {
 #[derive(Serialize, Deserialize)]
 pub struct GeneralConfig {
     pub default_length: usize,
+    pub default_count: usize,
+    pub auto_save: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -31,7 +33,11 @@ impl Config {
         if !config_path.exists() {
             fs::create_dir_all(config_path.parent().unwrap())?;
             let config = Config {
-                general: GeneralConfig { default_length: 16 },
+                general: GeneralConfig {
+                    default_length: 16,
+                    default_count: 1,
+                    auto_save: false,
+                },
                 language: LanguageConfig {
                     lang: "en".to_string(),
                 },
@@ -73,6 +79,51 @@ impl Config {
         Ok(config_path)
     }
 
+    /// Update the config file
+    ///
+    /// # Arguments
+    ///
+    /// * `lang`: The language to set
+    /// * `password_length`: The password length to set
+    /// * `count`: The count to set
+    /// * `auto_save`: The auto save to set
+    ///
+    /// # Returns
+    ///
+    /// Returns Ok(()) if successful, otherwise an error
+    pub fn update_config(
+        lang: Option<String>,
+        password_length: Option<usize>,
+        count: Option<usize>,
+        auto_save: Option<bool>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut new_config = Config::load_config()?;
+
+        if let Some(lang) = lang {
+            new_config.language.lang = lang;
+            Lingua::set_language(&new_config.language.lang)?;
+        }
+        if let Some(length) = password_length {
+            new_config.general.default_length = length;
+        }
+        if let Some(count) = count {
+            new_config.general.default_count = count;
+        }
+        if let Some(auto_save) = auto_save {
+            new_config.general.auto_save = auto_save;
+        }
+
+        Self::save_config(&new_config)?;
+
+        println!(
+            "\n\x1b[1;32m{}\x1b[0m",
+            Lingua::t("config.edit.success", &[]).unwrap()
+        );
+        println!("{}", "=".repeat(50));
+
+        Ok(())
+    }
+
     /// Print the config to the console
     ///
     /// # Arguments
@@ -81,6 +132,8 @@ impl Config {
     pub fn print_config(config: &Config) {
         let default_length = config.general.default_length.to_string();
         let language = config.language.lang.to_string();
+        let default_count = config.general.default_count.to_string();
+        let auto_save = config.general.auto_save.to_string();
 
         println!(
             "\n\x1b[1;36m{}\x1b[0m",
@@ -96,6 +149,22 @@ impl Config {
             Lingua::t(
                 "config.show.default_length",
                 &[("default_length", default_length.as_str())]
+            )
+            .unwrap()
+        );
+        println!(
+            "  {}",
+            Lingua::t(
+                "config.show.default_count",
+                &[("default_count", default_count.as_str())]
+            )
+            .unwrap()
+        );
+        println!(
+            "  {}",
+            Lingua::t(
+                "config.show.auto_save",
+                &[("auto_save", auto_save.to_string().as_str())]
             )
             .unwrap()
         );

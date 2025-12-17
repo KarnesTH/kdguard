@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Lingua::set_language(&lang)?;
 
     // Load config
-    let config = Config::load_config()?;
+    let config = &CONFIG;
 
     // Parse CLI
     let cli = Cli::parse();
@@ -22,10 +22,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Commands::Config { commands } => match commands {
                 ConfigCommands::Show => {
-                    Config::print_config(&config);
+                    Config::print_config(config);
                 }
-                ConfigCommands::Edit => {
-                    println!("Editing configuration...");
+                ConfigCommands::Edit {
+                    lang,
+                    password_length,
+                    count,
+                    auto_save,
+                } => {
+                    Config::update_config(lang, password_length, count, auto_save)?;
                 }
             },
         }
