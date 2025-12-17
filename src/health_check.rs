@@ -1,3 +1,5 @@
+use lingua_i18n_rs::prelude::Lingua;
+
 pub struct HealthCheck;
 
 const COMMON_PASSWORDS: &str = include_str!("../data/10k-most-common-passwords.txt");
@@ -71,38 +73,41 @@ impl HealthCheck {
         let mut suggestions = Vec::new();
 
         if length < 8 {
-            warnings.push("Password is too short".to_string());
-            suggestions.push("Use at least 8 characters".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.password_too_short", &[]).unwrap());
+            suggestions
+                .push(Lingua::t("commands.check.suggestions.password_to_short", &[]).unwrap());
         }
 
         if !has_lowercase {
-            warnings.push("No lowercase letters present".to_string());
-            suggestions.push("Add lowercase letters".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.no_lowercase", &[]).unwrap());
+            suggestions.push(Lingua::t("commands.check.suggestions.add_lowercase", &[]).unwrap());
         }
 
         if !has_uppercase {
-            warnings.push("No uppercase letters present".to_string());
-            suggestions.push("Add uppercase letters".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.no_uppercase", &[]).unwrap());
+            suggestions.push(Lingua::t("commands.check.suggestions.add_uppercase", &[]).unwrap());
         }
 
         if !has_digit {
-            warnings.push("No digits present".to_string());
-            suggestions.push("Add digits".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.no_digits", &[]).unwrap());
+            suggestions.push(Lingua::t("commands.check.suggestions.add_digits", &[]).unwrap());
         }
 
         if !has_special {
-            warnings.push("No special characters present".to_string());
-            suggestions.push("Add special characters".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.no_special", &[]).unwrap());
+            suggestions.push(Lingua::t("commands.check.suggestions.add_special", &[]).unwrap());
         }
 
         if Self::has_common_patterns(password) {
-            warnings.push("Common patterns detected".to_string());
-            suggestions.push("Avoid simple sequences like '123' or 'abc'".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.common_patterns", &[]).unwrap());
+            suggestions
+                .push(Lingua::t("commands.check.suggestions.avoid_simple_sequences", &[]).unwrap());
         }
 
         if Self::has_repetitions(password) {
-            warnings.push("Repetitions detected".to_string());
-            suggestions.push("Avoid character repetitions".to_string());
+            warnings.push(Lingua::t("commands.check.warnings.repetitions", &[]).unwrap());
+            suggestions
+                .push(Lingua::t("commands.check.suggestions.avoid_repetitions", &[]).unwrap());
         }
 
         PasswordAnalysis {
@@ -338,10 +343,10 @@ impl HealthCheck {
     /// Returns the rating
     fn score_to_rating(score: u32) -> String {
         match score {
-            0..=40 => "weak".to_string(),
-            41..=60 => "medium".to_string(),
-            61..=80 => "strong".to_string(),
-            _ => "very strong".to_string(),
+            0..=40 => Lingua::t("commands.check.score_rating.weak", &[]).unwrap(),
+            41..=60 => Lingua::t("commands.check.score_rating.medium", &[]).unwrap(),
+            61..=80 => Lingua::t("commands.check.score_rating.strong", &[]).unwrap(),
+            _ => Lingua::t("commands.check.score_rating.very_strong", &[]).unwrap(),
         }
     }
 
@@ -356,79 +361,201 @@ impl HealthCheck {
     ///
     /// Returns nothing
     fn print_result(analysis: &PasswordAnalysis, detailed: bool) {
+        let weak = Lingua::t("commands.check.score_rating.weak", &[]).unwrap();
+        let medium = Lingua::t("commands.check.score_rating.medium", &[]).unwrap();
+        let strong = Lingua::t("commands.check.score_rating.strong", &[]).unwrap();
+        let very_strong = Lingua::t("commands.check.score_rating.very_strong", &[]).unwrap();
+
         let color = match analysis.rating.as_str() {
-            "weak" => "\x1b[1;31m",
-            "medium" => "\x1b[1;33m",
-            "strong" => "\x1b[1;32m",
-            "very strong" => "\x1b[1;32m",
+            s if s == weak => "\x1b[1;31m",
+            s if s == medium => "\x1b[1;33m",
+            s if s == strong => "\x1b[1;32m",
+            s if s == very_strong => "\x1b[1;32m",
             _ => "\x1b[0m",
         };
 
-        println!("\n\x1b[1;36mPassword Health Check\x1b[0m");
+        println!(
+            "\n\x1b[1;36m{}\x1b[0m",
+            Lingua::t("commands.check.title", &[]).unwrap()
+        );
         println!("{}", "=".repeat(50));
         println!(
-            "Rating: {}{}\x1b[0m ({} points)",
-            color, analysis.rating, analysis.score.total
+            "{}",
+            Lingua::t(
+                "commands.check.rating",
+                &[
+                    (
+                        "rating",
+                        format!("{}{}\x1b[0m", color, analysis.rating).as_str()
+                    ),
+                    ("points", analysis.score.total.to_string().as_str())
+                ]
+            )
+            .unwrap()
         );
-        println!("Length: {} characters", analysis.length);
+        println!(
+            "{}",
+            Lingua::t(
+                "commands.check.length",
+                &[("length", analysis.length.to_string().as_str())]
+            )
+            .unwrap()
+        );
 
         if detailed {
-            println!("\n\x1b[1;33mDetailed Analysis:\x1b[0m");
-            println!("  Length Score: {} / 25", analysis.score.length_score);
             println!(
-                "  Character Diversity Score: {} / 30",
-                analysis.score.diversity_score
+                "\n\x1b[1;33m{}\x1b[0m",
+                Lingua::t("commands.check.subtitle_detailed", &[]).unwrap()
             );
             println!(
-                "  Complexity Score: {} / 25",
-                analysis.score.complexity_score
+                "  {}",
+                Lingua::t(
+                    "commands.check.length_score",
+                    &[(
+                        "length_score",
+                        analysis.score.length_score.to_string().as_str()
+                    )]
+                )
+                .unwrap()
             );
-            println!("  Entropy Score: {} / 20", analysis.score.entropy_score);
-            println!("  Entropy: {:.2} bits", analysis.entropy);
+            println!(
+                "  {}",
+                Lingua::t(
+                    "commands.check.diversity_score",
+                    &[(
+                        "diversity_score",
+                        analysis.score.diversity_score.to_string().as_str()
+                    )]
+                )
+                .unwrap()
+            );
+            println!(
+                "  {}",
+                Lingua::t(
+                    "commands.check.complexity_score",
+                    &[(
+                        "complexity_score",
+                        analysis.score.complexity_score.to_string().as_str()
+                    )]
+                )
+                .unwrap()
+            );
+            println!(
+                "  {}",
+                Lingua::t(
+                    "commands.check.entropy_score",
+                    &[(
+                        "entropy_score",
+                        analysis.score.entropy_score.to_string().as_str()
+                    )]
+                )
+                .unwrap()
+            );
+            println!(
+                "  {}",
+                Lingua::t(
+                    "commands.check.entropy",
+                    &[("entropy", format!("{:.2}", analysis.entropy).as_str())]
+                )
+                .unwrap()
+            );
 
-            println!("\n\x1b[1;33mCharacter Categories:\x1b[0m");
             println!(
-                "  Lowercase: {}",
-                if analysis.has_lowercase {
-                    "\x1b[1;32m✓\x1b[0m"
-                } else {
-                    "\x1b[1;31m✗\x1b[0m"
-                }
+                "\n\x1b[1;33m{}\x1b[0m",
+                Lingua::t("commands.check.subtitle_categories", &[]).unwrap()
             );
             println!(
-                "  Uppercase: {}",
-                if analysis.has_uppercase {
-                    "\x1b[1;32m✓\x1b[0m"
-                } else {
-                    "\x1b[1;31m✗\x1b[0m"
-                }
+                "  {}",
+                Lingua::t(
+                    "commands.check.lowercase",
+                    &[(
+                        "lowercase",
+                        format!(
+                            "{}\x1b[0m",
+                            if analysis.has_lowercase {
+                                "\x1b[1;32m✓"
+                            } else {
+                                "\x1b[1;31m✗"
+                            }
+                        )
+                        .as_str()
+                    )]
+                )
+                .unwrap()
             );
             println!(
-                "  Digits: {}",
-                if analysis.has_digit {
-                    "\x1b[1;32m✓\x1b[0m"
-                } else {
-                    "\x1b[1;31m✗\x1b[0m"
-                }
+                "  {}",
+                Lingua::t(
+                    "commands.check.uppercase",
+                    &[(
+                        "uppercase",
+                        format!(
+                            "{}\x1b[0m",
+                            if analysis.has_uppercase {
+                                "\x1b[1;32m✓"
+                            } else {
+                                "\x1b[1;31m✗"
+                            }
+                        )
+                        .as_str()
+                    )]
+                )
+                .unwrap()
             );
             println!(
-                "  Special Characters: {}",
-                if analysis.has_special {
-                    "\x1b[1;32m✓\x1b[0m"
-                } else {
-                    "\x1b[1;31m✗\x1b[0m"
-                }
+                "  {}",
+                Lingua::t(
+                    "commands.check.digits",
+                    &[(
+                        "digits",
+                        format!(
+                            "{}\x1b[0m",
+                            if analysis.has_digit {
+                                "\x1b[1;32m✓"
+                            } else {
+                                "\x1b[1;31m✗"
+                            }
+                        )
+                        .as_str()
+                    )]
+                )
+                .unwrap()
+            );
+            println!(
+                "  {}",
+                Lingua::t(
+                    "commands.check.special",
+                    &[(
+                        "special",
+                        format!(
+                            "{}\x1b[0m",
+                            if analysis.has_special {
+                                "\x1b[1;32m✓"
+                            } else {
+                                "\x1b[1;31m✗"
+                            }
+                        )
+                        .as_str()
+                    )]
+                )
+                .unwrap()
             );
 
             if !analysis.warnings.is_empty() {
-                println!("\n\x1b[1;31mWarnings:\x1b[0m");
+                println!(
+                    "\n\x1b[1;31m{}\x1b[0m",
+                    Lingua::t("commands.check.warnings.title", &[]).unwrap()
+                );
                 for warning in &analysis.warnings {
                     println!("  ⚠️\t{}", warning);
                 }
             }
 
             if !analysis.suggestions.is_empty() && analysis.score.total < 80 {
-                println!("\n\x1b[1;33mSuggestions:\x1b[0m");
+                println!(
+                    "\n\x1b[1;33m{}\x1b[0m",
+                    Lingua::t("commands.check.suggestions.title", &[]).unwrap()
+                );
                 for suggestion in &analysis.suggestions {
                     println!("  💡\t{}", suggestion);
                 }

@@ -1,9 +1,18 @@
 {
     "commands": {
+        "generate": {
+            "title": "Password Generation"
+        },
         "check": {
             "title": "Password Health Check",
             "subtitle_detailed": "Detailed Analysis",
             "subtitle_categories": "Character Categories",
+            "score_rating": {
+                "weak": "Weak",
+                "medium": "Medium",
+                "strong": "Strong",
+                "very_strong": "Very Strong"
+            },
             "rating": "Rating: {{rating}} ({{points}} points)",
             "length": "Length: {{length}} characters",
             "length_score": "Length Score: {{length_score}} / 25",
@@ -11,12 +20,30 @@
             "complexity_score": "Complexity Score: {{complexity_score}} / 25",
             "entropy_score": "Entropy Score: {{entropy_score}} / 20",
             "entropy": "Entropy: {{entropy}} Bits",
-            "warnings": "Warnings",
-            "suggestions": "Suggestions",
-            "lowercase": "Lowercase",
-            "uppercase": "Uppercase",
-            "digits": "Digits",
-            "special": "Special"
+            "warnings": {
+                "title": "Warnings",
+                "password_too_short": "Password is too short",
+                "no_lowercase": "No lowercase letters present",
+                "no_uppercase": "No uppercase letters present",
+                "no_digits": "No digits present",
+                "no_special": "No special characters present",
+                "common_patterns": "Common patterns detected",
+                "repetitions": "Repetitions detected"
+            },
+            "suggestions": {
+                "title": "Suggestions",
+                "password_to_short": "Use at least 8 characters",
+                "add_lowercase": "Add lowercase letters",
+                "add_uppercase": "Add uppercase letters",
+                "add_digits": "Add digits",
+                "add_special": "Add special characters",
+                "avoid_simple_sequences": "Avoid simple sequences like '123' or 'abc'",
+                "avoid_repetitions": "Avoid repetitions"
+            },
+            "lowercase": "Lowercase {{lowercase}}",
+            "uppercase": "Uppercase {{uppercase}}",
+            "digits": "Digits {{digits}}",
+            "special": "Special {{special}}"
         }
     },
     "config": {

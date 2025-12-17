@@ -1,9 +1,18 @@
 {
     "commands": {
+        "generate": {
+            "title": "Passwort Generierung"
+        },
         "check": {
             "title": "Passwort Zustandsprüfung",
             "subtitle_detailed": "Detaillierte Analyse",
             "subtitle_categories": "Zeichen Kategorien",
+            "score_rating": {
+                "weak": "Schwach",
+                "medium": "Mittel",
+                "strong": "Stark",
+                "very_strong": "Sehr stark"
+            },
             "rating": "Bewertung: {{rating}} ({{points}} Punkte)",
             "length": "Länge: {{length}} Zeichen",
             "length_score": "Längenbewertung: {{length_score}} / 25",
@@ -11,12 +20,30 @@
             "complexity_score": "Komplexitätsbewertung: {{complexity_score}} / 25",
             "entropy_score": "Entropiebewertung: {{entropy_score}} / 20",
             "entropy": "Entropie: {{entropy}} Bits",
-            "warnings": "Warnungen",
-            "suggestions": "Vorschläge",
-            "lowercase": "Kleinbuchstaben",
-            "uppercase": "Großbuchstaben",
-            "digits": "Ziffern",
-            "special": "Sonderzeichen"
+            "warnings": {
+                "title": "Warnungen",
+                "password_too_short": "Passwort ist zu kurz",
+                "no_lowercase": "Keine Kleinbuchstaben vorhanden",
+                "no_uppercase": "Keine Großbuchstaben vorhanden",
+                "no_digits": "Keine Ziffern vorhanden",
+                "no_special": "Keine Sonderzeichen vorhanden",
+                "common_patterns": "Häufige Muster erkannt",
+                "repetitions": "Wiederholungen erkannt"
+            },
+            "suggestions": {
+                "title": "Vorschläge",
+                "password_to_short": "Benutze mindestens 8 Zeichen",
+                "add_lowercase": "Füge Kleinbuchstaben hinzu",
+                "add_uppercase": "Füge Großbuchstaben hinzu",
+                "add_digits": "Füge Ziffern hinzu",
+                "add_special": "Füge Sonderzeichen hinzu",
+                "avoid_simple_sequences": "Vermeide einfache Sequenzen wie '123' oder 'abc'",
+                "avoid_repetitions": "Vermeide Wiederholungen"
+            },
+            "lowercase": "Kleinbuchstaben {{lowercase}}",
+            "uppercase": "Großbuchstaben {{uppercase}}",
+            "digits": "Ziffern {{digits}}",
+            "special": "Sonderzeichen {{special}}"
         }
     },
     "config": {

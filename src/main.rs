@@ -56,15 +56,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("Passwords saved to: {}", output_path.display());
     } else {
-        if count > 1 {
-            println!("\x1b[1;36mYour generated passwords:\x1b[0m");
-        } else {
-            println!("\x1b[1;36mYour generated password:\x1b[0m");
-        }
+        println!(
+            "\n\x1b[1;36m{}\x1b[0m",
+            Lingua::t("commands.generate.title", &[]).unwrap()
+        );
+        println!("{}", "=".repeat(50));
 
-        for password in passwords {
-            println!("  {}", password);
+        for (idx, password) in passwords.iter().enumerate() {
+            println!("  {:<5} {}", idx + 1, password);
         }
+        println!("{}", "=".repeat(50));
     }
 
     Ok(())

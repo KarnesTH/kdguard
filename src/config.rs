@@ -82,9 +82,8 @@ impl Config {
         let default_length = config.general.default_length.to_string();
         let language = config.language.lang.to_string();
 
-        println!("{}", "=".repeat(50));
         println!(
-            "\x1b[1;36m{}\x1b[0m",
+            "\n\x1b[1;36m{}\x1b[0m",
             Lingua::t("config.show.title", &[]).unwrap()
         );
         println!("{}", "=".repeat(50));
@@ -101,7 +100,7 @@ impl Config {
             .unwrap()
         );
         println!(
-            "\x1b[1;33m{}\x1b[0m",
+            "\n\x1b[1;33m{}\x1b[0m",
             Lingua::t("config.show.subtitle_language", &[]).unwrap()
         );
         println!(
