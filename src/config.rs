@@ -1,5 +1,6 @@
 use std::{fs, path::PathBuf};
 
+use lingua_i18n_rs::prelude::Lingua;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -30,9 +31,7 @@ impl Config {
         if !config_path.exists() {
             fs::create_dir_all(config_path.parent().unwrap())?;
             let config = Config {
-                general: GeneralConfig {
-                    default_length: 16,
-                },
+                general: GeneralConfig { default_length: 16 },
                 language: LanguageConfig {
                     lang: "en".to_string(),
                 },
@@ -67,10 +66,48 @@ impl Config {
     /// # Returns
     ///
     /// Returns the path to the config file
-    fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    pub fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
         let config_dir = dirs::config_dir().ok_or("Failed to get config directory")?;
         let config_path = config_dir.join("kdguard").join("config.toml");
 
         Ok(config_path)
+    }
+
+    /// Print the config to the console
+    ///
+    /// # Arguments
+    ///
+    /// * `config`: The config to print
+    pub fn print_config(config: &Config) {
+        let default_length = config.general.default_length.to_string();
+        let language = config.language.lang.to_string();
+
+        println!("{}", "=".repeat(50));
+        println!(
+            "\x1b[1;36m{}\x1b[0m",
+            Lingua::t("config.show.title", &[]).unwrap()
+        );
+        println!("{}", "=".repeat(50));
+        println!(
+            "\x1b[1;33m{}\x1b[0m",
+            Lingua::t("config.show.subtitle_general", &[]).unwrap()
+        );
+        println!(
+            "  {}",
+            Lingua::t(
+                "config.show.default_length",
+                &[("default_length", default_length.as_str())]
+            )
+            .unwrap()
+        );
+        println!(
+            "\x1b[1;33m{}\x1b[0m",
+            Lingua::t("config.show.subtitle_language", &[]).unwrap()
+        );
+        println!(
+            "  {}",
+            Lingua::t("config.show.language", &[("language", language.as_str())]).unwrap()
+        );
+        println!("{}", "=".repeat(50));
     }
 }

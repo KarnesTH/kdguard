@@ -1,0 +1,31 @@
+{
+    "commands": {
+        "check": {
+            "title": "Passwort Zustandsprüfung",
+            "subtitle_detailed": "Detaillierte Analyse",
+            "subtitle_categories": "Zeichen Kategorien",
+            "rating": "Bewertung: {{rating}} ({{points}} Punkte)",
+            "length": "Länge: {{length}} Zeichen",
+            "length_score": "Längenbewertung: {{length_score}} / 25",
+            "diversity_score": "Diversitätsbewertung: {{diversity_score}} / 30",
+            "complexity_score": "Komplexitätsbewertung: {{complexity_score}} / 25",
+            "entropy_score": "Entropiebewertung: {{entropy_score}} / 20",
+            "entropy": "Entropie: {{entropy}} Bits",
+            "warnings": "Warnungen",
+            "suggestions": "Vorschläge",
+            "lowercase": "Kleinbuchstaben",
+            "uppercase": "Großbuchstaben",
+            "digits": "Ziffern",
+            "special": "Sonderzeichen"
+        }
+    },
+    "config": {
+        "show": {
+            "title": "Aktuelle Konfiguration",
+            "subtitle_general": "Allgemeine Einstellungen",
+            "subtitle_language": "Spracheinstellungen",
+            "default_length": "Standardlänge: {{default_length}}",
+            "language": "Sprache: {{language}}"
+        }
+    }
+}

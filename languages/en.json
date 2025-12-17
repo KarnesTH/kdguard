@@ -1,0 +1,31 @@
+{
+    "commands": {
+        "check": {
+            "title": "Password Health Check",
+            "subtitle_detailed": "Detailed Analysis",
+            "subtitle_categories": "Character Categories",
+            "rating": "Rating: {{rating}} ({{points}} points)",
+            "length": "Length: {{length}} characters",
+            "length_score": "Length Score: {{length_score}} / 25",
+            "diversity_score": "Diversity Score: {{diversity_score}} / 30",
+            "complexity_score": "Complexity Score: {{complexity_score}} / 25",
+            "entropy_score": "Entropy Score: {{entropy_score}} / 20",
+            "entropy": "Entropy: {{entropy}} Bits",
+            "warnings": "Warnings",
+            "suggestions": "Suggestions",
+            "lowercase": "Lowercase",
+            "uppercase": "Uppercase",
+            "digits": "Digits",
+            "special": "Special"
+        }
+    },
+    "config": {
+        "show": {
+            "title": "Current Configuration",
+            "subtitle_general": "General Settings",
+            "subtitle_language": "Language Settings",
+            "default_length": "Default Length: {{default_length}}",
+            "language": "Language: {{language}}"
+        }
+    }
+}

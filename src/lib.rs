@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 
+mod config;
 mod generator;
 mod health_check;
-mod config;
 
 #[derive(Parser)]
 #[command(
@@ -43,7 +43,7 @@ pub enum Commands {
     Config {
         #[clap(subcommand)]
         commands: ConfigCommands,
-    }
+    },
 }
 
 #[derive(Subcommand)]
@@ -55,8 +55,8 @@ pub enum ConfigCommands {
 }
 
 pub mod prelude {
+    pub use crate::config::Config;
     pub use crate::generator::Generator;
     pub use crate::health_check::HealthCheck;
     pub use crate::{Cli, Commands, ConfigCommands};
-    pub use crate::config::Config;
 }

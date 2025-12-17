@@ -1,24 +1,31 @@
 use clap::Parser;
 use kdguard::prelude::*;
+use lingua_i18n_rs::prelude::Lingua;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Configure language
+    Lingua::new("languages").init()?;
+    let config_path = Config::get_config_path()?;
+    let lang = Lingua::load_lang_from_config(&config_path, "lang")?;
+    Lingua::set_language(&lang)?;
+
+    // Load config
     let config = Config::load_config()?;
+
+    // Parse CLI
     let cli = Cli::parse();
 
     if let Some(commands) = cli.commands {
         match commands {
             Commands::Check { password, detailed } => {
                 HealthCheck::check_password(&password, detailed)?;
-            },
-            Commands::Config { commands } => {
-                match commands {
-                    ConfigCommands::Show => {
-                        println!("Default length: {}", config.general.default_length);
-                        println!("Language: {}", config.language.lang);
-                    },
-                    ConfigCommands::Edit => {
-                        println!("Editing configuration...");
-                    },
+            }
+            Commands::Config { commands } => match commands {
+                ConfigCommands::Show => {
+                    Config::print_config(&config);
+                }
+                ConfigCommands::Edit => {
+                    println!("Editing configuration...");
                 }
             },
         }
