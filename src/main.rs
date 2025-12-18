@@ -33,6 +33,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Config::update_config(lang, password_length, count, auto_save)?;
                 }
             },
+            Commands::Uninstall => {
+                UninstallManager::uninstall()?;
+            }
         }
         return Ok(());
     }

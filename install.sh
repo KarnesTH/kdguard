@@ -85,6 +85,14 @@ main() {
     # Make executable
     chmod +x "${install_dir}/${BINARY_NAME}"
     
+    # Create symlink alias 'kdg'
+    local alias_name="kdg"
+    local alias_path="${install_dir}/${alias_name}"
+    if [ -L "$alias_path" ] || [ -e "$alias_path" ]; then
+        rm -f "$alias_path"
+    fi
+    ln -s "${install_dir}/${BINARY_NAME}" "$alias_path"
+    
     # Check if install directory is in PATH
     if [[ ":$PATH:" != *":${install_dir}:"* ]]; then
         echo -e "${YELLOW}Warning: ${install_dir} is not in your PATH${NC}"

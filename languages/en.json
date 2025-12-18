@@ -21,6 +21,12 @@
                 "edit_default_length_help": "Default length of the passwords",
                 "edit_default_count_help": "Default count of the passwords",
                 "edit_auto_save_help": "Auto save of the passwords"
+            },
+            "uninstall": {
+                "about": "Uninstall kdguard",
+                "confirm": "Do you really want to uninstall kdguard?",
+                "cancelled": "Uninstall cancelled",
+                "success": "kdguard has been successfully uninstalled!"
             }
         }
     },

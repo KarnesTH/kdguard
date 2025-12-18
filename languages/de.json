@@ -21,6 +21,12 @@
                 "edit_default_length_help": "Standardlänge der Passwörter",
                 "edit_default_count_help": "Standardanzahl der Passwörter",
                 "edit_auto_save_help": "Automatisches Speichern der Passwörter"
+            },
+            "uninstall": {
+                "about": "Deinstallation von kdguard",
+                "confirm": "Möchtest du kdguard wirklich deinstallieren?",
+                "cancelled": "Deinstallation abgebrochen",
+                "success": "Deinstallation erfolgreich"
             }
         }
     },

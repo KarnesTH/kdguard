@@ -7,6 +7,7 @@ use crate::config::Config;
 mod config;
 mod generator;
 mod health_check;
+mod uninstall;
 
 lazy_static! {
     pub static ref CONFIG: Config = Config::load_config().unwrap();
@@ -52,6 +53,8 @@ pub enum Commands {
         #[clap(subcommand)]
         commands: ConfigCommands,
     },
+    #[command(about = Lingua::t("cli.cli_commands.uninstall.about", &[]).unwrap())]
+    Uninstall,
 }
 
 #[derive(Subcommand)]
@@ -76,5 +79,6 @@ pub mod prelude {
     pub use crate::config::Config;
     pub use crate::generator::Generator;
     pub use crate::health_check::HealthCheck;
+    pub use crate::uninstall::UninstallManager;
     pub use crate::{Cli, Commands, ConfigCommands};
 }

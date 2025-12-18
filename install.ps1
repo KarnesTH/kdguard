@@ -73,6 +73,14 @@ function Main {
         exit 1
     }
     
+    # Create symlink alias 'kdg.exe'
+    $aliasName = "kdg.exe"
+    $aliasPath = Join-Path $installDir $aliasName
+    if (Test-Path $aliasPath) {
+        Remove-Item $aliasPath -Force
+    }
+    New-Item -ItemType SymbolicLink -Path $aliasPath -Target $installPath -Force | Out-Null
+    
     # Check if install directory is in PATH
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($userPath -notlike "*$installDir*") {
