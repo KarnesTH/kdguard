@@ -79,6 +79,28 @@ impl Config {
         Ok(config_path)
     }
 
+    /// Get the path to the languages directory
+    ///
+    /// # Returns
+    ///
+    /// Returns the path to the languages directory
+    pub fn get_languages_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let config_dir = dirs::config_dir().ok_or("Failed to get config directory")?;
+        let languages_dir = config_dir.join("kdguard").join("languages");
+
+        if !languages_dir.exists() {
+            fs::create_dir_all(&languages_dir)?;
+
+            const EN_JSON: &str = include_str!("../languages/en.json");
+            const DE_JSON: &str = include_str!("../languages/de.json");
+
+            fs::write(languages_dir.join("en.json"), EN_JSON)?;
+            fs::write(languages_dir.join("de.json"), DE_JSON)?;
+        }
+
+        Ok(languages_dir)
+    }
+
     /// Update the config file
     ///
     /// # Arguments

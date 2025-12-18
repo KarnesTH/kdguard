@@ -8,7 +8,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     UpdateManager::check_update().await?;
 
     // Configure language
-    Lingua::new("languages").init()?;
+    let languages_path = Config::get_languages_path()?;
+    Lingua::new(languages_path.to_str().ok_or("Invalid languages path")?).init()?;
     let config_path = Config::get_config_path()?;
     let lang = Lingua::load_lang_from_config(&config_path, "lang")?;
     Lingua::set_language(&lang)?;
