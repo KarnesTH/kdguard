@@ -4,17 +4,22 @@ use lingua_i18n_rs::prelude::Lingua;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Check for update
-    UpdateManager::check_update().await?;
-
-    // Configure language
+    // Ensure config directory and file exist (CONFIG lazy_static needs this)
+    let _ = &CONFIG;
+    
+    // Initialize languages first (before CLI parsing)
     let languages_path = Config::get_languages_path()?;
     Lingua::new(languages_path.to_str().ok_or("Invalid languages path")?).init()?;
+    
+    // Load language from config
     let config_path = Config::get_config_path()?;
-    let lang = Lingua::load_lang_from_config(&config_path, "lang")?;
+    let lang = Lingua::load_lang_from_config(&config_path, "lang")
+        .unwrap_or_else(|_| "en".to_string());
     Lingua::set_language(&lang)?;
-
-    // Load config
+    
+    // Check for update
+    UpdateManager::check_update().await?;
+    
     let config = &CONFIG;
 
     // Parse CLI

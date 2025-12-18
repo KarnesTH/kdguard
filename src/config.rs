@@ -29,9 +29,11 @@ impl Config {
     /// Returns the config if successful, otherwise an error
     pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
         let config_path = Self::get_config_path()?;
+        let config_dir = config_path.parent().ok_or("Invalid config path")?;
+        
+        fs::create_dir_all(config_dir)?;
 
         if !config_path.exists() {
-            fs::create_dir_all(config_path.parent().unwrap())?;
             let config = Config {
                 general: GeneralConfig {
                     default_length: 16,
@@ -62,6 +64,8 @@ impl Config {
     /// Returns Ok(()) if successful, otherwise an error
     pub fn save_config(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
         let config_path = Self::get_config_path()?;
+        let config_dir = config_path.parent().ok_or("Invalid config path")?;
+        fs::create_dir_all(config_dir)?;
         let config_str = toml::to_string_pretty(config)?;
         fs::write(config_path, config_str)?;
         Ok(())
