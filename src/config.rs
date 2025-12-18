@@ -30,7 +30,7 @@ impl Config {
     pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
         let config_path = Self::get_config_path()?;
         let config_dir = config_path.parent().ok_or("Invalid config path")?;
-        
+
         fs::create_dir_all(config_dir)?;
 
         if !config_path.exists() {
