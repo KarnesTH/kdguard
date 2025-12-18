@@ -8,6 +8,7 @@ mod config;
 mod generator;
 mod health_check;
 mod uninstall;
+mod update;
 
 lazy_static! {
     pub static ref CONFIG: Config = Config::load_config().unwrap();
@@ -80,5 +81,6 @@ pub mod prelude {
     pub use crate::generator::Generator;
     pub use crate::health_check::HealthCheck;
     pub use crate::uninstall::UninstallManager;
+    pub use crate::update::UpdateManager;
     pub use crate::{Cli, Commands, ConfigCommands};
 }

@@ -2,7 +2,11 @@ use clap::Parser;
 use kdguard::prelude::*;
 use lingua_i18n_rs::prelude::Lingua;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Check for update
+    UpdateManager::check_update().await?;
+
     // Configure language
     Lingua::new("languages").init()?;
     let config_path = Config::get_config_path()?;
