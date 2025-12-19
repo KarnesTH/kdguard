@@ -27,6 +27,9 @@
                 "confirm": "Do you really want to uninstall kdguard?",
                 "cancelled": "Uninstall cancelled",
                 "success": "kdguard has been successfully uninstalled!"
+            },
+            "update": {
+                "confirm": "A new version of kdguard is available. Do you want to update kdguard?"
             }
         }
     },

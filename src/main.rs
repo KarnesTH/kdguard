@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut passwords = Vec::new();
 
     for _ in 0..count {
-        let password = Generator::generate_password(cli.length)?;
+        let password = Generator::generate_random_password(cli.length)?;
 
         passwords.push(password);
     }

@@ -27,6 +27,9 @@
                 "confirm": "Möchtest du kdguard wirklich deinstallieren?",
                 "cancelled": "Deinstallation abgebrochen",
                 "success": "Deinstallation erfolgreich"
+            },
+            "update": {
+                "confirm": "Eine neue Version von kdguard ist verfügbar. Möchtest du kdguard aktualisieren?"
             }
         }
     },

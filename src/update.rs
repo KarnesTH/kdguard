@@ -1,6 +1,7 @@
 use std::{env::consts::OS, process::Command};
 
 use inquire::Confirm;
+use lingua_i18n_rs::prelude::Lingua;
 
 pub struct UpdateManager;
 
@@ -16,10 +17,9 @@ impl UpdateManager {
         let latest_version = Self::extract_version(&latest_tag);
 
         if Self::compare_versions(&latest_version, current_version) > 0 {
-            let confirm =
-                Confirm::new("A new version of kdguard is available. Do you want to update?")
-                    .with_default(false)
-                    .prompt()?;
+            let confirm = Confirm::new(&Lingua::t("cli.cli_commands.update.confirm", &[]).unwrap())
+                .with_default(false)
+                .prompt()?;
             if confirm {
                 Self::update()?;
             }

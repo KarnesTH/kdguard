@@ -15,7 +15,7 @@ impl Generator {
     /// # Returns
     ///
     /// Returns the generated password as String, else returns an error
-    pub fn generate_password(length: usize) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn generate_random_password(length: usize) -> Result<String, Box<dyn std::error::Error>> {
         if !(8..=64).contains(&length) {
             return Err("Invalid password length".into());
         }
@@ -116,8 +116,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_password() {
-        let password = Generator::generate_password(10).expect("Failed to generate password");
+    fn test_generate_random_password() {
+        let password =
+            Generator::generate_random_password(10).expect("Failed to generate password");
         assert_eq!(password.len(), 10);
         assert!(Generator::is_valid_password(&password));
     }
@@ -129,10 +130,10 @@ mod tests {
     }
 
     #[test]
-    fn test_error_generate_password() {
-        assert!(Generator::generate_password(7).is_err());
-        assert!(Generator::generate_password(65).is_err());
-        assert!(Generator::generate_password(8).is_ok());
-        assert!(Generator::generate_password(64).is_ok());
+    fn test_error_generate_random_password() {
+        assert!(Generator::generate_random_password(7).is_err());
+        assert!(Generator::generate_random_password(65).is_err());
+        assert!(Generator::generate_random_password(8).is_ok());
+        assert!(Generator::generate_random_password(64).is_ok());
     }
 }
