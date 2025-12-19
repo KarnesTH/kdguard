@@ -8,16 +8,16 @@ A CLI tool to generate secure and random passwords.
 
 ## Features
 
-- Generate secure passwords with customizable length (8-64 characters)
+- **Random Password Generation** - Generate secure passwords with customizable length (8-64 characters)
+- **Pattern-Based Passwords** - Create passwords following custom patterns (U=Uppercase, L=Lowercase, D=Digits, S=Special)
+- **Passphrase Generation** - Generate memorable passphrases using Diceware wordlists (German/English, 3-20 words)
+- **Deterministic Passwords** - Generate service-specific passwords from a master seed using HKDF
+- **Password Health Check** - Analyze password strength with comprehensive scoring system
 - Generate multiple passwords at once
 - Save passwords to files with timestamps
-- Cryptographically secure random number generation
+- Cryptographically secure random number generation (ring library)
 - Password validation ensuring lowercase, uppercase, digits, and special characters
-- **Password Health Check** - Analyze password strength with score-based system
-  - Length, character diversity, complexity, and entropy analysis
-  - Detection of common passwords from 10k most-used passwords list
-  - Pattern and repetition detection
-  - Detailed warnings and improvement suggestions
+- Multi-language support (English/German)
 
 ## Installation
 
@@ -37,92 +37,134 @@ powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/Kar
 
 Download the latest binary from [GitHub Releases](https://github.com/KarnesTH/kdguard/releases) for your platform.
 
-## Usage
+## Examples
 
-### Generate a single password (default length: 16)
+### Random Password Generation
 
 ```bash
+# Generate a single password (default length: 16)
 kdguard
-```
 
-### Generate a password with custom length
-
-```bash
+# Generate password with custom length
 kdguard -l 20
-```
 
-### Generate multiple passwords
-
-```bash
+# Generate multiple passwords
 kdguard -c 5
-```
 
-### Save password to file
-
-```bash
-kdguard -s
-```
-
-### Save password to custom file
-
-```bash
-kdguard -s -o mypasswords.txt
-```
-
-### Combine options
-
-```bash
+# Generate and save passwords
 kdguard -l 24 -c 3 -s -o passwords.txt
 ```
 
-### Check password strength
+### Pattern-Based Passwords
 
 ```bash
-kdguard check 'YourPassword123!'
+# Generate password following pattern: Uppercase, Lowercase, Digit, Digit
+kdguard -m pattern -p "ULLDD"
+
+# Pattern: U=Uppercase, L=Lowercase, D=Digit, S=Special
+kdguard -m pattern -p "ULLDSS"
 ```
 
-### Check password with detailed analysis
+### Passphrase Generation
 
 ```bash
+# Generate 5-word passphrase (German wordlist)
+kdguard -m phrase -w 5
+
+# Generate 7-word passphrase (uses language from config)
+kdguard -m phrase -w 7
+```
+
+### Deterministic Password Generation
+
+```bash
+# Set master seed in environment variable
+export PASSGEN_SEED="your-master-seed"
+
+# Generate password for GitHub service
+kdguard -m deterministic --seed-env PASSGEN_SEED --service github
+
+# Generate password with custom salt
+kdguard -m deterministic --seed-env PASSGEN_SEED --service github --salt custom-salt
+```
+
+### Password Health Check
+
+```bash
+# Check password strength
+kdguard check 'YourPassword123!'
+
+# Detailed analysis with score breakdown
 kdguard check 'YourPassword123!' --detailed
 ```
 
 **Note:** When checking passwords with special characters like `$`, `!`, `(`, `)`, use single quotes (`'`) to prevent shell interpretation.
 
-## Options
+## Password Generation Modes
 
-### Generation Options
+### Random Mode (Default)
 
-- `-l, --length <LENGTH>` - Length of the password (default: 16, range: 8-64)
-- `-c, --count <COUNT>` - Number of passwords to generate (default: 1)
-- `-s, --save` - Save passwords to a file
-- `-o, --output <OUTPUT>` - Output filename when saving (default: kdguard.txt)
+Generates cryptographically secure random passwords with customizable length. Ensures all character types are present.
 
-### Check Command Options
+**Options:**
+- `-m random` or default mode
+- `-l, --length <LENGTH>` - Password length (8-64 characters)
 
-- `check <PASSWORD>` - Check password strength (use single quotes for special characters)
-- `-d, --detailed` - Show detailed analysis with score breakdown, warnings, and suggestions
+### Pattern Mode
 
-## Examples
+Generate passwords following a custom pattern where each character position is defined.
 
+**Pattern Characters:**
+- `U` - Uppercase letter
+- `L` - Lowercase letter
+- `D` - Digit
+- `S` - Special character
+
+**Options:**
+- `-m pattern` - Enable pattern mode
+- `-p, --pattern <PATTERN>` - Pattern string (e.g., "ULLDSS")
+
+**Example:** `kdguard -m pattern -p "ULLDSS"` generates a 6-character password with uppercase, lowercase, lowercase, digit, special, special.
+
+### Phrase Mode
+
+Generate memorable passphrases using Diceware wordlists. Words are separated by hyphens.
+
+**Features:**
+- Uses 7,776-word Diceware lists (German/English)
+- Language selection based on config setting
+- Words are randomly selected from the wordlist
+
+**Options:**
+- `-m phrase` - Enable phrase mode
+- `-w, --words <COUNT>` - Number of words (3-20)
+
+**Example:** `kdguard -m phrase -w 5` generates a 5-word passphrase like `abend-abbruch-abfahrt-abfallen-abfangen`.
+
+### Deterministic Mode
+
+Generate service-specific passwords from a master seed using HKDF (HMAC-based Key Derivation Function). Same seed + same service = same password.
+
+**Features:**
+- Always generates 20-character passwords
+- Uses HKDF for secure key derivation
+- Service-specific passwords from single master seed
+- Optional salt for additional entropy
+
+**Options:**
+- `-m deterministic` - Enable deterministic mode
+- `--seed-env <VAR>` - Environment variable containing the master seed (required)
+- `--service <SERVICE>` - Service name (e.g., "github", "gitlab")
+- `--salt <SALT>` - Optional custom salt
+
+**Example:**
 ```bash
-# Generate a 20-character password
-kdguard -l 20
+export PASSGEN_SEED="my-secret-master-seed"
+kdguard -m deterministic --seed-env PASSGEN_SEED --service github
+# Always generates the same password for GitHub
 
-# Generate 5 passwords of length 16
-kdguard -c 5
-
-# Generate and save 3 passwords of length 24
-kdguard -l 24 -c 3 -s -o mypasswords.txt
-
-# Check password strength
-kdguard check 'MyPassword123!'
-
-# Check password with detailed analysis
-kdguard check 'MyPassword123!' --detailed
-
-# Check password with special characters (use single quotes)
-kdguard check '9$LyEq4#G+l3(P(O' --detailed
+kdguard -m deterministic --seed-env PASSGEN_SEED --service gitlab
+# Generates a different password for GitLab
 ```
 
 ## Password Health Check
@@ -149,6 +191,10 @@ The `check` command analyzes passwords using a comprehensive scoring system:
 - Detects common patterns (sequences, keyboard patterns)
 - Identifies character repetitions
 - Provides actionable improvement suggestions
+
+**Usage:**
+- `kdguard check <PASSWORD>` - Basic strength check
+- `kdguard check <PASSWORD> --detailed` - Detailed analysis with score breakdown
 
 ## Building from source
 
