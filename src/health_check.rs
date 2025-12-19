@@ -565,3 +565,103 @@ impl HealthCheck {
         println!("{}", "=".repeat(50));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculate_length_score() {
+        assert_eq!(HealthCheck::calculate_length_score(5), 0);
+        assert_eq!(HealthCheck::calculate_length_score(8), 10);
+        assert_eq!(HealthCheck::calculate_length_score(12), 10);
+        assert_eq!(HealthCheck::calculate_length_score(13), 20);
+        assert_eq!(HealthCheck::calculate_length_score(16), 20);
+        assert_eq!(HealthCheck::calculate_length_score(20), 25);
+    }
+
+    #[test]
+    fn test_calculate_diversity_score() {
+        let (score, has_lower, has_upper, has_digit, has_special) =
+            HealthCheck::calculate_diversity_score("Abc123!");
+        assert!(has_lower);
+        assert!(has_upper);
+        assert!(has_digit);
+        assert!(has_special);
+        assert_eq!(score, 30);
+
+        let (score2, _, _, _, _) = HealthCheck::calculate_diversity_score("abc");
+        assert_eq!(score2, 5);
+    }
+
+    #[test]
+    fn test_has_repetitions() {
+        assert!(HealthCheck::has_repetitions("aaa"));
+        assert!(HealthCheck::has_repetitions("abc111"));
+        assert!(!HealthCheck::has_repetitions("abc123"));
+        assert!(!HealthCheck::has_repetitions("ab"));
+    }
+
+    #[test]
+    fn test_has_common_patterns() {
+        assert!(HealthCheck::has_common_patterns("password"));
+        assert!(HealthCheck::has_common_patterns("123456"));
+        assert!(!HealthCheck::has_common_patterns("Xy9$mK2@nP7#qW"));
+    }
+
+    #[test]
+    fn test_calculate_entropy_score() {
+        let (score, entropy) = HealthCheck::calculate_entropy_score("Abc123!");
+        assert!(entropy > 0.0);
+        assert!(score > 0);
+
+        let (score2, entropy2) = HealthCheck::calculate_entropy_score("");
+        assert_eq!(score2, 0);
+        assert_eq!(entropy2, 0.0);
+    }
+
+    fn init_lingua_for_tests() {
+        use std::sync::Once;
+        static INIT: Once = Once::new();
+
+        INIT.call_once(|| {
+            if let Ok(languages_path) = crate::config::Config::get_languages_path() {
+                if let Some(path_str) = languages_path.to_str() {
+                    let lingua = Lingua::new(path_str);
+                    let _ = lingua.init();
+                    let _ = Lingua::set_language("en");
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn test_score_to_rating() {
+        init_lingua_for_tests();
+
+        let rating = HealthCheck::score_to_rating(30);
+        assert!(!rating.is_empty());
+
+        let rating2 = HealthCheck::score_to_rating(50);
+        assert!(!rating2.is_empty());
+
+        let rating3 = HealthCheck::score_to_rating(70);
+        assert!(!rating3.is_empty());
+
+        let rating4 = HealthCheck::score_to_rating(90);
+        assert!(!rating4.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_password() {
+        init_lingua_for_tests();
+
+        let analysis = HealthCheck::analyze_password("Test123!");
+        assert_eq!(analysis.length, 8);
+        assert!(analysis.has_lowercase);
+        assert!(analysis.has_uppercase);
+        assert!(analysis.has_digit);
+        assert!(analysis.has_special);
+        assert!(analysis.score.total > 0);
+    }
+}

@@ -91,19 +91,21 @@ impl Config {
 
     /// Get the path to the languages directory
     ///
+    /// Languages are embedded in the binary, but this function returns
+    /// a temporary directory path for Lingua initialization.
+    ///
     /// # Returns
     ///
     /// Returns the path to the languages directory
     pub fn get_languages_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+        const EN_JSON: &str = include_str!("../languages/en.json");
+        const DE_JSON: &str = include_str!("../languages/de.json");
+
         let config_dir = dirs::config_dir().ok_or("Failed to get config directory")?;
         let languages_dir = config_dir.join("kdguard").join("languages");
 
         if !languages_dir.exists() {
             fs::create_dir_all(&languages_dir)?;
-
-            const EN_JSON: &str = include_str!("../languages/en.json");
-            const DE_JSON: &str = include_str!("../languages/de.json");
-
             fs::write(languages_dir.join("en.json"), EN_JSON)?;
             fs::write(languages_dir.join("de.json"), DE_JSON)?;
         }
@@ -209,5 +211,57 @@ impl Config {
             Lingua::t("config.show.language", &[("language", language.as_str())]).unwrap()
         );
         println!("{}", "=".repeat(50));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_config_path() {
+        let path = Config::get_config_path();
+        assert!(path.is_ok());
+        let path_buf = path.unwrap();
+        let path_str = path_buf.to_string_lossy();
+        assert!(path_str.contains("kdguard"));
+        assert!(path_str.contains("config.toml"));
+    }
+
+    #[test]
+    fn test_get_languages_path() {
+        let path = Config::get_languages_path();
+        assert!(path.is_ok());
+        let path_buf = path.unwrap();
+        let path_str = path_buf.to_string_lossy();
+        assert!(path_str.contains("languages"));
+    }
+
+    #[test]
+    fn test_config_serialization() {
+        let config = Config {
+            general: GeneralConfig {
+                default_length: 20,
+                default_count: 5,
+                default_mode: "phrase".to_string(),
+                auto_save: true,
+            },
+            language: LanguageConfig {
+                lang: "de".to_string(),
+            },
+        };
+
+        let config_str = toml::to_string(&config);
+        assert!(config_str.is_ok());
+        let config_str = config_str.unwrap();
+        assert!(config_str.contains("default_length = 20"));
+        assert!(config_str.contains("lang = \"de\""));
+        assert!(config_str.contains("default_mode = \"phrase\""));
+
+        let parsed: Result<Config, _> = toml::from_str(&config_str);
+        assert!(parsed.is_ok());
+        let parsed = parsed.unwrap();
+        assert_eq!(parsed.general.default_length, 20);
+        assert_eq!(parsed.language.lang, "de");
     }
 }

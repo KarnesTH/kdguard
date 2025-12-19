@@ -1,10 +1,10 @@
-use std::{fs::OpenOptions, io::Write, path::Path};
+use std::{fs::OpenOptions, io::Write, path::Path, sync::OnceLock};
 
 use chrono::Local;
 use ring::hkdf;
 use ring::rand::{SecureRandom, SystemRandom};
 
-use crate::config::Config;
+use crate::CONFIG;
 
 const CHARSET: &[u8] =
     b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
@@ -97,6 +97,27 @@ impl Generator {
         Ok(password)
     }
 
+    /// Get cached wordlist for a given language
+    fn get_wordlist(lang: &str) -> &'static Vec<&'static str> {
+        static WORDLIST_EN: OnceLock<Vec<&'static str>> = OnceLock::new();
+        static WORDLIST_DE: OnceLock<Vec<&'static str>> = OnceLock::new();
+
+        match lang {
+            "de" => WORDLIST_DE.get_or_init(|| {
+                include_str!("../data/wordlist_de.txt")
+                    .lines()
+                    .filter(|line| !line.trim().is_empty())
+                    .collect()
+            }),
+            _ => WORDLIST_EN.get_or_init(|| {
+                include_str!("../data/wordlist_en.txt")
+                    .lines()
+                    .filter(|line| !line.trim().is_empty())
+                    .collect()
+            }),
+        }
+    }
+
     /// Generate phrase based password
     ///
     /// # Arguments
@@ -113,19 +134,8 @@ impl Generator {
             return Err("Word count must be between 3 and 20".into());
         }
 
-        let config = Config::load_config()?;
-        let lang = config.language.lang.as_str();
-
-        let wordlist_content = match lang {
-            "de" => include_str!("../data/wordlist_de.txt"),
-            "en" => include_str!("../data/wordlist_en.txt"),
-            _ => include_str!("../data/wordlist_en.txt"),
-        };
-
-        let words: Vec<&str> = wordlist_content
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .collect();
+        let lang = CONFIG.language.lang.as_str();
+        let words = Self::get_wordlist(lang);
 
         if words.is_empty() {
             return Err("Wordlist is empty".into());
