@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/kdguard_logo.png" width="256" alt="dzctl Logo" />
+</p>
+
 # kdguard
 
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
