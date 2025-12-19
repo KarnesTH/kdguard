@@ -161,13 +161,6 @@ impl Generator {
     /// # Returns
     ///
     /// Returns the generated password as String (always 20 characters), else returns an error
-    ///
-    /// # Implementation Notes
-    ///
-    /// Uses HKDF (HMAC-based Key Derivation Function) to derive deterministic bytes
-    /// from the seed word. The seed is never used directly as RNG input.
-    /// The service parameter is used in the HKDF info parameter to ensure different
-    /// passwords for different services while using the same seed.
     pub fn generate_deterministic_password(
         seed: &str,
         salt: Option<&str>,
