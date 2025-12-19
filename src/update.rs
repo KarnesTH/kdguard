@@ -1,7 +1,9 @@
-use std::{env::consts::OS, process::Command};
+use std::{env::consts::OS, fs, process::Command};
 
 use inquire::Confirm;
 use lingua_i18n_rs::prelude::Lingua;
+
+use crate::config::Config;
 
 pub struct UpdateManager;
 
@@ -100,6 +102,9 @@ impl UpdateManager {
     ///
     /// Returns Ok(()) if successful, otherwise an error
     fn update() -> Result<(), Box<dyn std::error::Error>> {
+        let language_path = Config::get_languages_path()?;
+        fs::remove_dir_all(language_path)?;
+
         if OS == "Windows" {
             let mut command = Command::new("powershell")
                 .arg("-ExecutionPolicy")

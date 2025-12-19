@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use lazy_static::lazy_static;
 use lingua_i18n_rs::prelude::Lingua;
 
@@ -12,6 +12,29 @@ mod update;
 
 lazy_static! {
     pub static ref CONFIG: Config = Config::load_config().unwrap();
+    static ref DEFAULT_MODE_STR: String = CONFIG.general.default_mode.clone();
+}
+
+#[derive(ValueEnum, Clone)]
+pub enum PasswordMode {
+    Random,
+    Pattern,
+    Phrase,
+    Deterministic,
+}
+
+pub fn parse_password_mode(s: &str) -> Result<PasswordMode, String> {
+    match s.to_lowercase().as_str() {
+        "random" => Ok(PasswordMode::Random),
+        "pattern" => Ok(PasswordMode::Pattern),
+        "phrase" => Ok(PasswordMode::Phrase),
+        "deterministic" => Ok(PasswordMode::Deterministic),
+        _ => Err(format!("Invalid password mode: {}", s)),
+    }
+}
+
+fn get_default_mode() -> &'static str {
+    &DEFAULT_MODE_STR
 }
 
 #[derive(Parser)]
@@ -23,6 +46,8 @@ lazy_static! {
 pub struct Cli {
     #[clap(subcommand)]
     pub commands: Option<Commands>,
+    #[clap(short, long, help = Lingua::t("cli.args.mode_help", &[]).unwrap(), value_parser = parse_password_mode, default_value = get_default_mode())]
+    pub mode: PasswordMode,
     #[clap(short, long, help = Lingua::t("cli.args.length_help", &[]).unwrap(), default_value_t = CONFIG.general.default_length)]
     pub length: usize,
     #[clap(short, long, help = Lingua::t("cli.args.count_help", &[]).unwrap(), default_value_t = CONFIG.general.default_count)]
@@ -36,6 +61,8 @@ pub struct Cli {
     pub save: bool,
     #[clap(short, long, help = Lingua::t("cli.args.output_help", &[]).unwrap())]
     pub output: Option<String>,
+    #[clap(short, long, help = Lingua::t("cli.args.pattern_help", &[]).unwrap())]
+    pub pattern: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -82,5 +109,5 @@ pub mod prelude {
     pub use crate::health_check::HealthCheck;
     pub use crate::uninstall::UninstallManager;
     pub use crate::update::UpdateManager;
-    pub use crate::{Cli, Commands, ConfigCommands};
+    pub use crate::{Cli, Commands, ConfigCommands, PasswordMode, parse_password_mode};
 }

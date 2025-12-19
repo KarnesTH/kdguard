@@ -5,7 +5,9 @@
             "length_help": "Länge des Passworts",
             "count_help": "Anzahl der Passwörter",
             "save_help": "Speichern der Passwörter in eine Datei",
-            "output_help": "Name der Datei zum Speichern der Passwörter (z.B. kdguard.txt)"
+            "output_help": "Name der Datei zum Speichern der Passwörter (z.B. kdguard.txt)",
+            "pattern_help": "Pattern für das Passwort. Benutze U für Großbuchstaben, L für Kleinbuchstaben, D für Ziffern und S für Sonderzeichen",
+            "mode_help": "Modus für die Passwortgenerierung. Benutze random für zufällige Passwörter, pattern für pattern basierte Passwörter, phrase für phrase basierte Passwörter und deterministic für deterministische Passwörter"
         },
         "cli_commands": {
             "check_password": {

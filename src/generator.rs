@@ -3,10 +3,13 @@ use std::{fs::OpenOptions, io::Write, path::Path};
 use chrono::Local;
 use ring::rand::{SecureRandom, SystemRandom};
 
+const CHARSET: &[u8] =
+    b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
+
 pub struct Generator;
 
 impl Generator {
-    /// Generate password
+    /// Generate random password
     ///
     /// # Arguments
     ///
@@ -20,8 +23,7 @@ impl Generator {
             return Err("Invalid password length".into());
         }
 
-        let charset: &[u8] =
-            b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
+        let charset: &[u8] = CHARSET;
         let rng = SystemRandom::new();
         const MAX_RETRIES: u32 = 100;
 
@@ -42,6 +44,54 @@ impl Generator {
         }
 
         Err("Failed to generate valid password after maximum retries".into())
+    }
+
+    /// Generate pattern based password
+    ///
+    /// # Arguments
+    ///
+    /// * `pattern`: The pattern to generate the password from
+    ///
+    /// # Returns
+    ///
+    /// Returns the generated password as String, else returns an error
+    pub fn generate_pattern_password(pattern: &str) -> Result<String, Box<dyn std::error::Error>> {
+        if pattern.is_empty() {
+            return Err("Pattern cannot be empty".into());
+        }
+
+        const UPPERCASE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const LOWERCASE: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+        const DIGITS: &[u8] = b"0123456789";
+        const SPECIAL: &[u8] = b"!@#$%^&*()-_=+";
+
+        let mut password = String::with_capacity(pattern.len());
+        let rng = SystemRandom::new();
+
+        for c in pattern.chars() {
+            let charset: &[u8];
+            match c {
+                'U' => charset = UPPERCASE,
+                'L' => charset = LOWERCASE,
+                'D' => charset = DIGITS,
+                'S' => charset = SPECIAL,
+                _ => {
+                    return Err(format!(
+                        "Invalid pattern character: '{}'. Only U, L, D, S are allowed",
+                        c
+                    )
+                    .into());
+                }
+            }
+
+            let mut bytes = [0u8; 4];
+            rng.fill(&mut bytes).expect("Failed to fill bytes");
+            let random_u32 = u32::from_be_bytes(bytes);
+            let idx = (random_u32 as usize) % charset.len();
+            password.push(charset[idx] as char);
+        }
+
+        Ok(password)
     }
 
     /// Check valid password
@@ -121,6 +171,13 @@ mod tests {
             Generator::generate_random_password(10).expect("Failed to generate password");
         assert_eq!(password.len(), 10);
         assert!(Generator::is_valid_password(&password));
+    }
+
+    #[test]
+    fn test_generate_pattern_password() {
+        let password =
+            Generator::generate_pattern_password("UDDL").expect("Failed to generate password");
+        assert_eq!(password.len(), 4)
     }
 
     #[test]

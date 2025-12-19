@@ -13,6 +13,7 @@ pub struct Config {
 pub struct GeneralConfig {
     pub default_length: usize,
     pub default_count: usize,
+    pub default_mode: String,
     pub auto_save: bool,
 }
 
@@ -38,6 +39,7 @@ impl Config {
                 general: GeneralConfig {
                     default_length: 16,
                     default_count: 1,
+                    default_mode: "random".to_string(),
                     auto_save: false,
                 },
                 language: LanguageConfig {

@@ -55,7 +55,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut passwords = Vec::new();
 
     for _ in 0..count {
-        let password = Generator::generate_random_password(cli.length)?;
+        let password = match cli.mode {
+            PasswordMode::Random => Generator::generate_random_password(cli.length)?,
+            PasswordMode::Pattern => {
+                Generator::generate_pattern_password(&cli.pattern.as_ref().unwrap())?
+            }
+            PasswordMode::Phrase => {
+                println!("Phrase mode is not implemented yet");
+                continue;
+            }
+            PasswordMode::Deterministic => {
+                println!("Deterministic mode is not implemented yet");
+                continue;
+            }
+        };
 
         passwords.push(password);
     }
