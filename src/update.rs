@@ -1,4 +1,4 @@
-use std::{env::consts::OS, fs, process::Command};
+use std::{env::consts::OS, process::Command};
 
 use inquire::Confirm;
 use lingua_i18n_rs::prelude::Lingua;
@@ -102,9 +102,6 @@ impl UpdateManager {
     ///
     /// Returns Ok(()) if successful, otherwise an error
     fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let language_path = Config::get_languages_path()?;
-        fs::remove_dir_all(language_path)?;
-
         if OS == "Windows" {
             let mut command = Command::new("powershell")
                 .arg("-ExecutionPolicy")
@@ -116,12 +113,13 @@ impl UpdateManager {
                 .spawn()?;
             command.wait()?;
         } else {
-            let mut command = Command::new("sh")
-                .arg("-c")
+            let mut command = Command::new("bash")
                 .arg("curl -LsSf https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.sh | sh")
                 .spawn()?;
             command.wait()?;
         }
+        
+        let _ = Config::get_languages_path();
 
         Ok(())
     }

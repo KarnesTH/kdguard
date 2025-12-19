@@ -104,11 +104,9 @@ impl Config {
         let config_dir = dirs::config_dir().ok_or("Failed to get config directory")?;
         let languages_dir = config_dir.join("kdguard").join("languages");
 
-        if !languages_dir.exists() {
-            fs::create_dir_all(&languages_dir)?;
-            fs::write(languages_dir.join("en.json"), EN_JSON)?;
-            fs::write(languages_dir.join("de.json"), DE_JSON)?;
-        }
+        fs::create_dir_all(&languages_dir)?;
+        fs::write(languages_dir.join("en.json"), EN_JSON)?;
+        fs::write(languages_dir.join("de.json"), DE_JSON)?;
 
         Ok(languages_dir)
     }
