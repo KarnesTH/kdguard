@@ -113,8 +113,11 @@ impl UpdateManager {
                 .spawn()?;
             command.wait()?;
         } else {
-            let mut command = Command::new("bash")
-                .arg("curl -LsSf https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.sh | sh")
+            let mut command = Command::new("curl")
+                .arg("-LsSf")
+                .arg("https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.sh")
+                .arg("|")
+                .arg("sh")
                 .spawn()?;
             command.wait()?;
         }
