@@ -118,7 +118,7 @@ impl UpdateManager {
                 .spawn()?;
             command.wait()?;
         }
-        
+
         let _ = Config::get_languages_path();
 
         Ok(())
