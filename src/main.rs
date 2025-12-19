@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let password = match cli.mode {
             PasswordMode::Random => Generator::generate_random_password(cli.length)?,
             PasswordMode::Pattern => {
-                Generator::generate_pattern_password(&cli.pattern.as_ref().unwrap())?
+                Generator::generate_pattern_password(cli.pattern.as_ref().unwrap())?
             }
             PasswordMode::Phrase => {
                 println!("Phrase mode is not implemented yet");

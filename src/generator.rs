@@ -69,12 +69,11 @@ impl Generator {
         let rng = SystemRandom::new();
 
         for c in pattern.chars() {
-            let charset: &[u8];
-            match c {
-                'U' => charset = UPPERCASE,
-                'L' => charset = LOWERCASE,
-                'D' => charset = DIGITS,
-                'S' => charset = SPECIAL,
+            let charset: &[u8] = match c {
+                'U' => UPPERCASE,
+                'L' => LOWERCASE,
+                'D' => DIGITS,
+                'S' => SPECIAL,
                 _ => {
                     return Err(format!(
                         "Invalid pattern character: '{}'. Only U, L, D, S are allowed",
@@ -82,7 +81,7 @@ impl Generator {
                     )
                     .into());
                 }
-            }
+            };
 
             let mut bytes = [0u8; 4];
             rng.fill(&mut bytes).expect("Failed to fill bytes");
