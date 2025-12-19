@@ -20,8 +20,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check for update
     UpdateManager::check_update().await?;
 
-    let config = &CONFIG;
-
     // Parse CLI
     let cli = Cli::parse();
 
@@ -32,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Commands::Config { commands } => match commands {
                 ConfigCommands::Show => {
-                    Config::print_config(config);
+                    Config::print_config(&CONFIG);
                 }
                 ConfigCommands::Edit {
                     lang,
@@ -58,15 +56,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let password = match cli.mode {
             PasswordMode::Random => Generator::generate_random_password(cli.length)?,
             PasswordMode::Pattern => {
-                Generator::generate_pattern_password(cli.pattern.as_ref().unwrap())?
+                let pattern = cli
+                    .pattern
+                    .as_ref()
+                    .ok_or("Pattern is required for pattern mode. Use --pattern <PATTERN>")?;
+                Generator::generate_pattern_password(pattern)?
             }
             PasswordMode::Phrase => {
-                println!("Phrase mode is not implemented yet");
-                continue;
+                let words = cli
+                    .words
+                    .ok_or("Word count is required for phrase mode. Use --words <COUNT>")?;
+                Generator::generate_phrase_password(words)?
             }
             PasswordMode::Deterministic => {
-                println!("Deterministic mode is not implemented yet");
-                continue;
+                let seed_env_var = cli
+                    .seed_env
+                    .as_ref()
+                    .ok_or("--seed-env is required for deterministic mode")?;
+
+                let seed = std::env::var(seed_env_var)
+                    .map_err(|_| format!("Environment variable '{}' not found", seed_env_var))?;
+
+                let salt = cli.salt.as_deref();
+                let service = cli.service.as_deref();
+
+                Generator::generate_deterministic_password(&seed, salt, service)?
             }
         };
 

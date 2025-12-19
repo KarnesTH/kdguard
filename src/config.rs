@@ -30,7 +30,9 @@ impl Config {
     /// Returns the config if successful, otherwise an error
     pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
         let config_path = Self::get_config_path()?;
-        let config_dir = config_path.parent().ok_or("Invalid config path")?;
+        let config_dir = config_path
+            .parent()
+            .ok_or_else(|| "Invalid config path: no parent directory".to_string())?;
 
         fs::create_dir_all(config_dir)?;
 
@@ -66,7 +68,9 @@ impl Config {
     /// Returns Ok(()) if successful, otherwise an error
     pub fn save_config(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
         let config_path = Self::get_config_path()?;
-        let config_dir = config_path.parent().ok_or("Invalid config path")?;
+        let config_dir = config_path
+            .parent()
+            .ok_or_else(|| "Invalid config path: no parent directory".to_string())?;
         fs::create_dir_all(config_dir)?;
         let config_str = toml::to_string_pretty(config)?;
         fs::write(config_path, config_str)?;

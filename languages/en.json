@@ -7,7 +7,11 @@
             "save_help": "Save passwords to a file",
             "output_help": "Name of the file to save the passwords (e.g. kdguard.txt)",
             "pattern_help": "Pattern: U=Uppercase letters, L=Lowercase letters, D=Digits, S=Special characters",
-            "mode_help": "Mode: random, pattern, phrase or deterministic"
+            "mode_help": "Mode: random, pattern, phrase or deterministic",
+            "phrase_help": "Number of words in the phrase",
+            "seed_env_help": "Environment variable name containing the seed for deterministic password generation",
+            "service_help": "Service name to use as salt for deterministic password generation",
+            "salt_help": "Custom salt for deterministic password generation (combined with service if provided)"
         },
         "cli_commands": {
             "check_password": {

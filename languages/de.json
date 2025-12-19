@@ -7,7 +7,11 @@
             "save_help": "Speichern der Passwörter in eine Datei",
             "output_help": "Name der Datei zum Speichern der Passwörter (z.B. kdguard.txt)",
             "pattern_help": "Pattern: U=Großbuchstaben, L=Kleinbuchstaben, D=Ziffern, S=Sonderzeichen",
-            "mode_help": "Modus: random, pattern, phrase oder deterministic"
+            "mode_help": "Modus: random, pattern, phrase oder deterministic",
+            "phrase_help": "Anzahl der Wörter in der Phrase",
+            "seed_env_help": "Umgebungsvariablenname, der das Seed für die deterministische Passwort-Generierung enthält",
+            "service_help": "Service-Name, der als Salt für die deterministische Passwort-Generierung verwendet wird",
+            "salt_help": "Benutzerdefiniertes Salt für die deterministische Passwort-Generierung (wird mit Service kombiniert, falls angegeben)"
         },
         "cli_commands": {
             "check_password": {

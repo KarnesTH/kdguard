@@ -29,17 +29,24 @@ impl UninstallManager {
             return Ok(());
         }
 
-        fs::remove_dir_all(config_path.parent().unwrap())?;
+        let config_dir = config_path
+            .parent()
+            .ok_or_else(|| "Invalid config path: no parent directory".to_string())?;
+        fs::remove_dir_all(config_dir)?;
 
         if OS == "Windows" {
-            let install_dir = install_path.parent().unwrap();
+            let install_dir = install_path
+                .parent()
+                .ok_or_else(|| "Invalid install path: no parent directory".to_string())?;
             let alias_path = install_dir.join("kdg.exe");
             if alias_path.exists() {
                 fs::remove_file(&alias_path)?;
             }
             fs::remove_dir_all(install_dir)?;
         } else {
-            let install_dir = install_path.parent().unwrap();
+            let install_dir = install_path
+                .parent()
+                .ok_or_else(|| "Invalid install path: no parent directory".to_string())?;
             let alias_path = install_dir.join("kdg");
             if alias_path.exists() {
                 fs::remove_file(&alias_path)?;

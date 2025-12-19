@@ -63,6 +63,14 @@ pub struct Cli {
     pub output: Option<String>,
     #[clap(short, long, help = Lingua::t("cli.args.pattern_help", &[]).unwrap())]
     pub pattern: Option<String>,
+    #[clap(short, long, help = Lingua::t("cli.args.phrase_help", &[]).unwrap())]
+    pub words: Option<usize>,
+    #[clap(long, help = Lingua::t("cli.args.seed_env_help", &[]).unwrap())]
+    pub seed_env: Option<String>,
+    #[clap(short, long, help = Lingua::t("cli.args.service_help", &[]).unwrap())]
+    pub service: Option<String>,
+    #[clap(long, help = Lingua::t("cli.args.salt_help", &[]).unwrap())]
+    pub salt: Option<String>,
 }
 
 #[derive(Subcommand)]
