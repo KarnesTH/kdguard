@@ -6,8 +6,8 @@
             "count_help": "Number of passwords to generate",
             "save_help": "Save passwords to a file",
             "output_help": "Name of the file to save the passwords (e.g. kdguard.txt)",
-            "pattern_help": "Pattern for the password. Use U for uppercase letters, L for lowercase letters, D for digits and S for special characters",
-            "mode_help": "Mode for the password generation. Use random for random passwords, pattern for pattern based passwords, phrase for phrase based passwords and deterministic for deterministic passwords"
+            "pattern_help": "Pattern: U=Uppercase letters, L=Lowercase letters, D=Digits, S=Special characters",
+            "mode_help": "Mode: random, pattern, phrase or deterministic"
         },
         "cli_commands": {
             "check_password": {
