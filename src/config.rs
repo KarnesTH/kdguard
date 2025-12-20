@@ -56,7 +56,7 @@ impl Config {
             let config_str = fs::read_to_string(&config_path)
                 .map_err(|e| ConfigError::ReadConfigFileError(e.to_string()))?;
             let config: Config = toml::from_str(&config_str)
-                .map_err(|e| ConfigError::ParseConfigError(e.to_string()))?;
+                .map_err(|e| ConfigError::ParseConfigurationError(e.to_string()))?;
             Ok(config)
         }
     }
@@ -78,7 +78,7 @@ impl Config {
         fs::create_dir_all(config_dir)
             .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
         let config_str = toml::to_string_pretty(config)
-            .map_err(|e| ConfigError::SerializeConfigError(e.to_string()))?;
+            .map_err(|e| ConfigError::SerializeConfigurationError(e.to_string()))?;
         fs::write(config_path, config_str)
             .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
         Ok(())

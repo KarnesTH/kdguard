@@ -6,15 +6,15 @@ pub enum ConfigError {
     #[error("Invalid config path: {0}")]
     InvalidConfigPath(String),
     #[error("Failed to load config: {0}")]
-    LoadConfigError(String),
+    LoadConfigurationError(String),
     #[error("Failed to save config: {0}")]
-    SaveConfigError(String),
+    SaveConfigurationError(String),
     #[error("Failed to parse config: {0}")]
-    ParseConfigError(String),
+    ParseConfigurationError(String),
     #[error("Failed to update config: {0}")]
-    UpdateConfigError(String),
+    UpdateConfigurationError(String),
     #[error("Failed to print config: {0}")]
-    PrintConfigError(String),
+    PrintConfigurationError(String),
     #[error("Failed to get config path: {0}")]
     GetConfigPathError(String),
     #[error("Failed to get languages path: {0}")]
@@ -30,7 +30,7 @@ pub enum ConfigError {
     #[error("Failed to write config file: {0}")]
     WriteConfigFileError(String),
     #[error("Failed to serialize config: {0}")]
-    SerializeConfigError(String),
+    SerializeConfigurationError(String),
     #[error("Failed to set language: {0}")]
     SetLanguageError(#[from] LinguaError),
 }
