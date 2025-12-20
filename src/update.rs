@@ -302,11 +302,13 @@ impl UpdateManager {
             "kdguard"
         };
         let binary_path = install_dir.join(binary_name_final);
+        let temp_binary_path = install_dir.join(format!("{}.new", binary_name_final));
+        let old_binary_path = install_dir.join(format!("{}.old", binary_name_final));
 
         LoggingManager::info(&format!("Installing binary to: {}", binary_path.display()));
 
-        let mut file = File::create(&binary_path).map_err(|e| {
-            let error = format!("Failed to create binary file: {}", e);
+        let mut file = File::create(&temp_binary_path).map_err(|e| {
+            let error = format!("Failed to create temporary binary file: {}", e);
             LoggingManager::error(&error);
             UpdateError::Update(error)
         })?;
@@ -321,7 +323,7 @@ impl UpdateManager {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&binary_path)
+            let mut perms = fs::metadata(&temp_binary_path)
                 .map_err(|e| {
                     let error = format!("Failed to get file metadata: {}", e);
                     LoggingManager::error(&error);
@@ -329,11 +331,45 @@ impl UpdateManager {
                 })?
                 .permissions();
             perms.set_mode(0o755);
-            fs::set_permissions(&binary_path, perms).map_err(|e| {
+            fs::set_permissions(&temp_binary_path, perms).map_err(|e| {
                 let error = format!("Failed to set file permissions: {}", e);
                 LoggingManager::error(&error);
                 UpdateError::Update(error)
             })?;
+        }
+
+        if binary_path.exists() {
+            if old_binary_path.exists() {
+                fs::remove_file(&old_binary_path)
+                    .map_err(|e| {
+                        let error = format!("Failed to remove old backup: {}", e);
+                        LoggingManager::warn(&error);
+                    })
+                    .ok();
+            }
+            fs::rename(&binary_path, &old_binary_path).map_err(|e| {
+                let error = format!("Failed to rename old binary: {}", e);
+                LoggingManager::error(&error);
+                UpdateError::Update(error)
+            })?;
+        }
+
+        fs::rename(&temp_binary_path, &binary_path).map_err(|e| {
+            let error = format!("Failed to rename new binary: {}", e);
+            LoggingManager::error(&error);
+            if old_binary_path.exists() {
+                fs::rename(&old_binary_path, &binary_path).ok();
+            }
+            UpdateError::Update(error)
+        })?;
+
+        if old_binary_path.exists() {
+            fs::remove_file(&old_binary_path)
+                .map_err(|e| {
+                    let error = format!("Failed to remove old backup: {}", e);
+                    LoggingManager::warn(&error);
+                })
+                .ok();
         }
 
         let alias_name = if OS == "Windows" { "kdg.exe" } else { "kdg" };
