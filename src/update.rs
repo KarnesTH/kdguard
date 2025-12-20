@@ -1,9 +1,13 @@
-use std::{env::consts::OS, process::Command};
+use std::{
+    env::consts::{ARCH, OS},
+    fs::{self, File},
+    io::Write,
+    path::PathBuf,
+};
 
 use inquire::Confirm;
 use lingua_i18n_rs::prelude::Lingua;
 
-use crate::config::Config;
 use crate::errors::UpdateError;
 use crate::logging::LoggingManager;
 
@@ -36,7 +40,7 @@ impl UpdateManager {
                 })?;
             if confirm {
                 LoggingManager::info("User confirmed update, starting update process");
-                Self::update()?;
+                Self::update(&latest_tag).await?;
             } else {
                 LoggingManager::info("Update cancelled by user");
             }
@@ -93,7 +97,6 @@ impl UpdateManager {
             UpdateError::ParseJson(error)
         })?;
 
-        // Log raw tag_name value for debugging
         if let Some(tag_value) = json.get("tag_name") {
             LoggingManager::info(&format!("Raw tag_name from API: {:?}", tag_value));
         }
@@ -108,7 +111,6 @@ impl UpdateManager {
             .trim()
             .to_string();
 
-        // Validate tag format - should be like "v0.6.0" or "0.6.0"
         if latest_tag.contains("Full Changelog")
             || latest_tag.contains("http")
             || latest_tag.contains("compare")
@@ -155,70 +157,223 @@ impl UpdateManager {
         0
     }
 
-    /// Update kdguard
+    /// Detect the platform for the binary download
+    ///
+    /// # Returns
+    ///
+    /// Returns the platform if successful, otherwise an error
+    fn detect_platform() -> Result<String, UpdateError> {
+        let os = match OS {
+            "linux" => "linux",
+            "macos" | "darwin" => "macos",
+            "windows" => "windows",
+            _ => {
+                let error = format!("Unsupported OS: {}", OS);
+                LoggingManager::error(&error);
+                return Err(UpdateError::Update(error));
+            }
+        };
+
+        let arch = match ARCH {
+            "x86_64" | "amd64" => "x86_64",
+            "aarch64" | "arm64" => {
+                if os == "macos" {
+                    "aarch64"
+                } else {
+                    let error = format!("Unsupported architecture for {}: {}", os, ARCH);
+                    LoggingManager::error(&error);
+                    return Err(UpdateError::Update(error));
+                }
+            }
+            _ => {
+                let error = format!("Unsupported architecture: {}", ARCH);
+                LoggingManager::error(&error);
+                return Err(UpdateError::Update(error));
+            }
+        };
+
+        let platform = if os == "macos" && arch == "aarch64" {
+            "macos-aarch64"
+        } else if os == "macos" && arch == "x86_64" {
+            "macos-x86_64"
+        } else if os == "linux" && arch == "x86_64" {
+            "linux-x86_64"
+        } else if os == "windows" && arch == "x86_64" {
+            "windows-x86_64"
+        } else {
+            let error = format!("Unsupported platform combination: {}-{}", os, arch);
+            LoggingManager::error(&error);
+            return Err(UpdateError::Update(error));
+        };
+
+        Ok(platform.to_string())
+    }
+
+    /// Get the install directory path
+    ///
+    /// # Returns
+    ///
+    /// Returns the install directory path if successful, otherwise an error
+    fn get_install_dir() -> Result<PathBuf, UpdateError> {
+        if OS == "Windows" {
+            let local_app_data = dirs::data_local_dir().ok_or_else(|| {
+                let error = "Failed to get LocalAppData directory".to_string();
+                LoggingManager::error(&error);
+                UpdateError::Update(error)
+            })?;
+            Ok(local_app_data.join("Karnes Development").join("kdguard"))
+        } else {
+            let home = dirs::home_dir().ok_or_else(|| {
+                let error = "Failed to get home directory".to_string();
+                LoggingManager::error(&error);
+                UpdateError::Update(error)
+            })?;
+            Ok(home.join(".local").join("bin"))
+        }
+    }
+
+    /// Update kdguard by downloading and installing the binary directly
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - The tag version to install
     ///
     /// # Returns
     ///
     /// Returns Ok(()) if successful, otherwise an error
-    fn update() -> Result<(), UpdateError> {
-        LoggingManager::info("Starting update process");
+    async fn update(tag: &str) -> Result<(), UpdateError> {
+        LoggingManager::info(&format!("Starting update process for tag: {}", tag));
+
+        let platform = Self::detect_platform()?;
+        let version = Self::extract_version(tag);
+        let install_dir = Self::get_install_dir()?;
+
+        LoggingManager::info(&format!("Platform: {}, Version: {}", platform, version));
+        LoggingManager::info(&format!("Install directory: {}", install_dir.display()));
+
+        fs::create_dir_all(&install_dir).map_err(|e| {
+            let error = format!("Failed to create install directory: {}", e);
+            LoggingManager::error(&error);
+            UpdateError::Update(error)
+        })?;
+
+        let binary_name = if OS == "Windows" {
+            format!("kdguard_{}-{}.exe", version, platform)
+        } else {
+            format!("kdguard_{}-{}", version, platform)
+        };
+        let download_url = format!(
+            "https://github.com/KarnesTH/kdguard/releases/download/{}/{}",
+            tag, binary_name
+        );
+
+        LoggingManager::info(&format!("Downloading from: {}", download_url));
+
+        let client = reqwest::Client::builder()
+            .user_agent("kdguard-update-checker")
+            .build()
+            .map_err(|e| {
+                let error = format!("Failed to create HTTP client: {}", e);
+                LoggingManager::error(&error);
+                UpdateError::GetLatestTag(error)
+            })?;
+
+        let response = client.get(&download_url).send().await.map_err(|e| {
+            let error = format!("Failed to download binary: {}", e);
+            LoggingManager::error(&error);
+            UpdateError::Update(error)
+        })?;
+
+        if !response.status().is_success() {
+            let error = format!("Failed to download binary: HTTP {}", response.status());
+            LoggingManager::error(&error);
+            return Err(UpdateError::Update(error));
+        }
+
+        let binary_data = response.bytes().await.map_err(|e| {
+            let error = format!("Failed to read binary data: {}", e);
+            LoggingManager::error(&error);
+            UpdateError::Update(error)
+        })?;
+
+        let binary_name_final = if OS == "Windows" {
+            "kdguard.exe"
+        } else {
+            "kdguard"
+        };
+        let binary_path = install_dir.join(binary_name_final);
+
+        LoggingManager::info(&format!("Installing binary to: {}", binary_path.display()));
+
+        let mut file = File::create(&binary_path).map_err(|e| {
+            let error = format!("Failed to create binary file: {}", e);
+            LoggingManager::error(&error);
+            UpdateError::Update(error)
+        })?;
+
+        file.write_all(&binary_data).map_err(|e| {
+            let error = format!("Failed to write binary data: {}", e);
+            LoggingManager::error(&error);
+            UpdateError::Update(error)
+        })?;
+        drop(file);
+
+        // Make executable on Unix
+        if OS != "Windows" {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&binary_path)
+                .map_err(|e| {
+                    let error = format!("Failed to get file metadata: {}", e);
+                    LoggingManager::error(&error);
+                    UpdateError::Update(error)
+                })?
+                .permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&binary_path, perms).map_err(|e| {
+                let error = format!("Failed to set file permissions: {}", e);
+                LoggingManager::error(&error);
+                UpdateError::Update(error)
+            })?;
+        }
+
+        let alias_name = if OS == "Windows" { "kdg.exe" } else { "kdg" };
+        let alias_path = install_dir.join(alias_name);
+
+        if alias_path.exists() {
+            fs::remove_file(&alias_path)
+                .map_err(|e| {
+                    let error = format!("Failed to remove existing alias: {}", e);
+                    LoggingManager::warn(&error);
+                })
+                .ok();
+        }
 
         if OS == "Windows" {
-            LoggingManager::info("Running Windows update script");
-            let mut command = Command::new("powershell")
-                .arg("-ExecutionPolicy")
-                .arg("ByPass")
-                .arg("-c")
-                .arg(
-                    "irm https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.ps1 | iex",
-                )
-                .spawn()
-                .map_err(|e| {
-                    let error = format!("Failed to spawn PowerShell process: {}", e);
-                    LoggingManager::error(&error);
-                    UpdateError::SpawnProcess(error)
-                })?;
-            let status = command.wait().map_err(|e| {
-                let error = format!("Update process failed: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::UpdateProcess(error)
-            })?;
-            if !status.success() {
-                let error = format!(
-                    "Update script exited with non-zero status: {:?}",
-                    status.code()
-                );
-                LoggingManager::error(&error);
-                return Err(UpdateError::UpdateProcess(error));
+            #[cfg(windows)]
+            {
+                use std::os::windows::fs::symlink_file;
+                if symlink_file(&binary_path, &alias_path).is_err() {
+                    fs::copy(&binary_path, &alias_path).map_err(|e| {
+                        let error = format!("Failed to create alias: {}", e);
+                        LoggingManager::error(&error);
+                        UpdateError::Update(error)
+                    })?;
+                }
             }
         } else {
-            LoggingManager::info("Running Unix update script");
-            let mut command = Command::new("sh")
-                .arg("-c")
-                .arg("curl -LsSf https://raw.githubusercontent.com/KarnesTH/kdguard/main/install.sh | sh")
-                .spawn()
-                .map_err(|e| {
-                    let error = format!("Failed to spawn shell process: {}", e);
-                    LoggingManager::error(&error);
-                    UpdateError::SpawnProcess(error)
-                })?;
-            let status = command.wait().map_err(|e| {
-                let error = format!("Update process failed: {}", e);
+            std::os::unix::fs::symlink(&binary_path, &alias_path).map_err(|e| {
+                let error = format!("Failed to create symlink: {}", e);
                 LoggingManager::error(&error);
-                UpdateError::UpdateProcess(error)
+                UpdateError::Update(error)
             })?;
-            if !status.success() {
-                let error = format!(
-                    "Update script exited with non-zero status: {:?}",
-                    status.code()
-                );
-                LoggingManager::error(&error);
-                return Err(UpdateError::UpdateProcess(error));
-            }
         }
 
         LoggingManager::info("Update process completed successfully");
-        let _ = Config::get_languages_path();
+        LoggingManager::info(&format!(
+            "Binary installed to: {}\nAlias created at: {}",
+            binary_path.display(),
+            alias_path.display()
+        ));
 
         Ok(())
     }
