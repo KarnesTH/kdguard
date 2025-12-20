@@ -1,5 +1,6 @@
 use std::{fs, path::PathBuf};
 
+use crate::errors::ConfigError;
 use lingua_i18n_rs::prelude::Lingua;
 use serde::{Deserialize, Serialize};
 
@@ -28,13 +29,14 @@ impl Config {
     /// # Returns
     ///
     /// Returns the config if successful, otherwise an error
-    pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
+    pub fn load_config() -> Result<Config, ConfigError> {
         let config_path = Self::get_config_path()?;
-        let config_dir = config_path
-            .parent()
-            .ok_or_else(|| "Invalid config path: no parent directory".to_string())?;
+        let config_dir = config_path.parent().ok_or(ConfigError::InvalidConfigPath(
+            "Invalid config path: no parent directory".to_string(),
+        ))?;
 
-        fs::create_dir_all(config_dir)?;
+        fs::create_dir_all(config_dir)
+            .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
 
         if !config_path.exists() {
             let config = Config {
@@ -51,8 +53,10 @@ impl Config {
             Self::save_config(&config)?;
             Ok(config)
         } else {
-            let config_str = fs::read_to_string(&config_path)?;
-            let config: Config = toml::from_str(&config_str)?;
+            let config_str = fs::read_to_string(&config_path)
+                .map_err(|e| ConfigError::ReadConfigFileError(e.to_string()))?;
+            let config: Config = toml::from_str(&config_str)
+                .map_err(|e| ConfigError::ParseConfigError(e.to_string()))?;
             Ok(config)
         }
     }
@@ -66,14 +70,17 @@ impl Config {
     /// # Returns
     ///
     /// Returns Ok(()) if successful, otherwise an error
-    pub fn save_config(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save_config(config: &Config) -> Result<(), ConfigError> {
         let config_path = Self::get_config_path()?;
-        let config_dir = config_path
-            .parent()
-            .ok_or_else(|| "Invalid config path: no parent directory".to_string())?;
-        fs::create_dir_all(config_dir)?;
-        let config_str = toml::to_string_pretty(config)?;
-        fs::write(config_path, config_str)?;
+        let config_dir = config_path.parent().ok_or(ConfigError::InvalidConfigPath(
+            "Invalid config path: no parent directory".to_string(),
+        ))?;
+        fs::create_dir_all(config_dir)
+            .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
+        let config_str = toml::to_string_pretty(config)
+            .map_err(|e| ConfigError::SerializeConfigError(e.to_string()))?;
+        fs::write(config_path, config_str)
+            .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
         Ok(())
     }
 
@@ -82,8 +89,10 @@ impl Config {
     /// # Returns
     ///
     /// Returns the path to the config file
-    pub fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let config_dir = dirs::config_dir().ok_or("Failed to get config directory")?;
+    pub fn get_config_path() -> Result<PathBuf, ConfigError> {
+        let config_dir = dirs::config_dir().ok_or(ConfigError::GetConfigDirectoryError(
+            "Failed to get config directory".to_string(),
+        ))?;
         let config_path = config_dir.join("kdguard").join("config.toml");
 
         Ok(config_path)
@@ -97,16 +106,21 @@ impl Config {
     /// # Returns
     ///
     /// Returns the path to the languages directory
-    pub fn get_languages_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    pub fn get_languages_path() -> Result<PathBuf, ConfigError> {
         const EN_JSON: &str = include_str!("../languages/en.json");
         const DE_JSON: &str = include_str!("../languages/de.json");
 
-        let config_dir = dirs::config_dir().ok_or("Failed to get config directory")?;
+        let config_dir = dirs::config_dir().ok_or(ConfigError::GetConfigDirectoryError(
+            "Failed to get config directory".to_string(),
+        ))?;
         let languages_dir = config_dir.join("kdguard").join("languages");
 
-        fs::create_dir_all(&languages_dir)?;
-        fs::write(languages_dir.join("en.json"), EN_JSON)?;
-        fs::write(languages_dir.join("de.json"), DE_JSON)?;
+        fs::create_dir_all(&languages_dir)
+            .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
+        fs::write(languages_dir.join("en.json"), EN_JSON)
+            .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
+        fs::write(languages_dir.join("de.json"), DE_JSON)
+            .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
 
         Ok(languages_dir)
     }
@@ -128,12 +142,13 @@ impl Config {
         password_length: Option<usize>,
         count: Option<usize>,
         auto_save: Option<bool>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), ConfigError> {
         let mut new_config = Config::load_config()?;
 
         if let Some(lang) = lang {
             new_config.language.lang = lang;
-            Lingua::set_language(&new_config.language.lang)?;
+            Lingua::set_language(&new_config.language.lang)
+                .map_err(ConfigError::SetLanguageError)?;
         }
         if let Some(length) = password_length {
             new_config.general.default_length = length;

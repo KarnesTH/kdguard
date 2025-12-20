@@ -10,6 +10,8 @@ mod health_check;
 mod uninstall;
 mod update;
 
+mod errors;
+
 lazy_static! {
     pub static ref CONFIG: Config = Config::load_config().unwrap();
     static ref DEFAULT_MODE_STR: String = CONFIG.general.default_mode.clone();
@@ -67,7 +69,7 @@ pub struct Cli {
     pub words: Option<usize>,
     #[clap(long, help = Lingua::t("cli.args.seed_env_help", &[]).unwrap())]
     pub seed_env: Option<String>,
-    #[clap(short, long, help = Lingua::t("cli.args.service_help", &[]).unwrap())]
+    #[clap(long, help = Lingua::t("cli.args.service_help", &[]).unwrap())]
     pub service: Option<String>,
     #[clap(long, help = Lingua::t("cli.args.salt_help", &[]).unwrap())]
     pub salt: Option<String>,
