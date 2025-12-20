@@ -4,6 +4,9 @@ use lingua_i18n_rs::prelude::Lingua;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize logging first
+    LoggingManager::init()?;
+
     // Ensure config directory and file exist (CONFIG lazy_static needs this)
     let _ = &CONFIG;
 

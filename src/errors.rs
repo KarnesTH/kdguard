@@ -34,3 +34,19 @@ pub enum ConfigError {
     #[error("Failed to set language: {0}")]
     SetLanguageError(#[from] LinguaError),
 }
+
+#[derive(Error, Debug)]
+pub enum LoggingError {
+    #[error("Failed to initialize logging: {0}")]
+    Initialize(String),
+    #[error("Failed to get logging directory: {0}")]
+    GetDirectory(String),
+    #[error("Failed to create logging directory: {0}")]
+    CreateDirectory(String),
+    #[error("Failed to write system info: {0}")]
+    WriteSystemInfo(String),
+    #[error("Failed to create log file: {0}")]
+    CreateFile(String),
+    #[error("Failed to cleanup old logs: {0}")]
+    Cleanup(String),
+}

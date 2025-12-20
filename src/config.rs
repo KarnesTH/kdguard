@@ -1,6 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use crate::errors::ConfigError;
+use crate::logging::LoggingManager;
 use lingua_i18n_rs::prelude::Lingua;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +32,8 @@ impl Config {
     /// Returns the config if successful, otherwise an error
     pub fn load_config() -> Result<Config, ConfigError> {
         let config_path = Self::get_config_path()?;
+        LoggingManager::info(&format!("Loading config from: {}", config_path.display()));
+
         let config_dir = config_path.parent().ok_or(ConfigError::InvalidConfigPath(
             "Invalid config path: no parent directory".to_string(),
         ))?;
@@ -39,6 +42,7 @@ impl Config {
             .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
 
         if !config_path.exists() {
+            LoggingManager::info("Config file not found, creating default config");
             let config = Config {
                 general: GeneralConfig {
                     default_length: 16,
@@ -51,12 +55,26 @@ impl Config {
                 },
             };
             Self::save_config(&config)?;
+            LoggingManager::info("Default config created successfully");
             Ok(config)
         } else {
-            let config_str = fs::read_to_string(&config_path)
-                .map_err(|e| ConfigError::ReadConfigFileError(e.to_string()))?;
-            let config: Config = toml::from_str(&config_str)
-                .map_err(|e| ConfigError::ParseConfigurationError(e.to_string()))?;
+            LoggingManager::info("Config file found, loading from file");
+            let config_str = fs::read_to_string(&config_path).map_err(|e| {
+                LoggingManager::error(&format!("Failed to read config file: {}", e));
+                ConfigError::ReadConfigFileError(e.to_string())
+            })?;
+            let config: Config = toml::from_str(&config_str).map_err(|e| {
+                LoggingManager::error(&format!("Failed to parse config file: {}", e));
+                ConfigError::ParseConfigurationError(e.to_string())
+            })?;
+            LoggingManager::info(&format!(
+                "Config loaded successfully: language={}, default_length={}, default_count={}, default_mode={}, auto_save={}",
+                config.language.lang,
+                config.general.default_length,
+                config.general.default_count,
+                config.general.default_mode,
+                config.general.auto_save
+            ));
             Ok(config)
         }
     }
@@ -72,15 +90,22 @@ impl Config {
     /// Returns Ok(()) if successful, otherwise an error
     pub fn save_config(config: &Config) -> Result<(), ConfigError> {
         let config_path = Self::get_config_path()?;
+        LoggingManager::info(&format!("Saving config to: {}", config_path.display()));
+
         let config_dir = config_path.parent().ok_or(ConfigError::InvalidConfigPath(
             "Invalid config path: no parent directory".to_string(),
         ))?;
         fs::create_dir_all(config_dir)
             .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
-        let config_str = toml::to_string_pretty(config)
-            .map_err(|e| ConfigError::SerializeConfigurationError(e.to_string()))?;
-        fs::write(config_path, config_str)
-            .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
+        let config_str = toml::to_string_pretty(config).map_err(|e| {
+            LoggingManager::error(&format!("Failed to serialize config: {}", e));
+            ConfigError::SerializeConfigurationError(e.to_string())
+        })?;
+        fs::write(&config_path, config_str).map_err(|e| {
+            LoggingManager::error(&format!("Failed to write config file: {}", e));
+            ConfigError::WriteConfigFileError(e.to_string())
+        })?;
+        LoggingManager::info("Config saved successfully");
         Ok(())
     }
 
@@ -115,12 +140,17 @@ impl Config {
         ))?;
         let languages_dir = config_dir.join("kdguard").join("languages");
 
+        LoggingManager::info(&format!(
+            "Setting up languages directory: {}",
+            languages_dir.display()
+        ));
         fs::create_dir_all(&languages_dir)
             .map_err(|e| ConfigError::CreateConfigDirectoryError(e.to_string()))?;
         fs::write(languages_dir.join("en.json"), EN_JSON)
             .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
         fs::write(languages_dir.join("de.json"), DE_JSON)
             .map_err(|e| ConfigError::WriteConfigFileError(e.to_string()))?;
+        LoggingManager::info("Language files extracted successfully");
 
         Ok(languages_dir)
     }
@@ -143,24 +173,32 @@ impl Config {
         count: Option<usize>,
         auto_save: Option<bool>,
     ) -> Result<(), ConfigError> {
+        LoggingManager::info("Updating config");
         let mut new_config = Config::load_config()?;
 
         if let Some(lang) = lang {
+            LoggingManager::info(&format!("Setting language to: {}", lang));
             new_config.language.lang = lang;
-            Lingua::set_language(&new_config.language.lang)
-                .map_err(ConfigError::SetLanguageError)?;
+            Lingua::set_language(&new_config.language.lang).map_err(|e| {
+                LoggingManager::error(&format!("Failed to set language: {}", e));
+                ConfigError::SetLanguageError(e)
+            })?;
         }
         if let Some(length) = password_length {
+            LoggingManager::info(&format!("Setting default password length to: {}", length));
             new_config.general.default_length = length;
         }
         if let Some(count) = count {
+            LoggingManager::info(&format!("Setting default count to: {}", count));
             new_config.general.default_count = count;
         }
         if let Some(auto_save) = auto_save {
+            LoggingManager::info(&format!("Setting auto_save to: {}", auto_save));
             new_config.general.auto_save = auto_save;
         }
 
         Self::save_config(&new_config)?;
+        LoggingManager::info("Config updated successfully");
 
         println!(
             "\n\x1b[1;32m{}\x1b[0m",

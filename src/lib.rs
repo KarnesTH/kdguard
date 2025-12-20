@@ -11,6 +11,7 @@ mod uninstall;
 mod update;
 
 mod errors;
+mod logging;
 
 lazy_static! {
     pub static ref CONFIG: Config = Config::load_config().unwrap();
@@ -117,6 +118,7 @@ pub mod prelude {
     pub use crate::config::Config;
     pub use crate::generator::Generator;
     pub use crate::health_check::HealthCheck;
+    pub use crate::logging::LoggingManager;
     pub use crate::uninstall::UninstallManager;
     pub use crate::update::UpdateManager;
     pub use crate::{Cli, Commands, ConfigCommands, PasswordMode, parse_password_mode};
