@@ -93,6 +93,11 @@ impl UpdateManager {
             UpdateError::ParseJson(error)
         })?;
 
+        // Log raw tag_name value for debugging
+        if let Some(tag_value) = json.get("tag_name") {
+            LoggingManager::info(&format!("Raw tag_name from API: {:?}", tag_value));
+        }
+
         let latest_tag = json
             .get("tag_name")
             .and_then(|v| v.as_str())
@@ -100,7 +105,18 @@ impl UpdateManager {
                 LoggingManager::error("Failed to parse tag_name from GitHub API response");
                 UpdateError::ParseTagName
             })?
+            .trim()
             .to_string();
+
+        // Validate tag format - should be like "v0.6.0" or "0.6.0"
+        if latest_tag.contains("Full Changelog")
+            || latest_tag.contains("http")
+            || latest_tag.contains("compare")
+        {
+            let error = format!("Invalid tag format received: {}", latest_tag);
+            LoggingManager::error(&error);
+            return Err(UpdateError::ParseTagName);
+        }
 
         LoggingManager::info(&format!("Successfully fetched latest tag: {}", latest_tag));
         Ok(latest_tag)
