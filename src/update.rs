@@ -318,8 +318,8 @@ impl UpdateManager {
         })?;
         drop(file);
 
-        // Make executable on Unix
-        if OS != "Windows" {
+        #[cfg(unix)]
+        {
             use std::os::unix::fs::PermissionsExt;
             let mut perms = fs::metadata(&binary_path)
                 .map_err(|e| {
@@ -348,19 +348,20 @@ impl UpdateManager {
                 .ok();
         }
 
-        if OS == "Windows" {
-            #[cfg(windows)]
-            {
-                use std::os::windows::fs::symlink_file;
-                if symlink_file(&binary_path, &alias_path).is_err() {
-                    fs::copy(&binary_path, &alias_path).map_err(|e| {
-                        let error = format!("Failed to create alias: {}", e);
-                        LoggingManager::error(&error);
-                        UpdateError::Update(error)
-                    })?;
-                }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_file;
+            if symlink_file(&binary_path, &alias_path).is_err() {
+                fs::copy(&binary_path, &alias_path).map_err(|e| {
+                    let error = format!("Failed to create alias: {}", e);
+                    LoggingManager::error(&error);
+                    UpdateError::Update(error)
+                })?;
             }
-        } else {
+        }
+
+        #[cfg(unix)]
+        {
             std::os::unix::fs::symlink(&binary_path, &alias_path).map_err(|e| {
                 let error = format!("Failed to create symlink: {}", e);
                 LoggingManager::error(&error);
