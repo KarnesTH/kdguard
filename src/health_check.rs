@@ -1,5 +1,8 @@
 use lingua_i18n_rs::prelude::Lingua;
 
+use crate::errors::HealthCheckError;
+use crate::logging::LoggingManager;
+
 pub struct HealthCheck;
 
 const COMMON_PASSWORDS: &str = include_str!("../data/10k-most-common-passwords.txt");
@@ -38,11 +41,18 @@ impl HealthCheck {
     /// # Returns
     ///
     /// Returns the analysis of the password
-    pub fn check_password(
-        password: &str,
-        detailed: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn check_password(password: &str, detailed: bool) -> Result<(), HealthCheckError> {
+        LoggingManager::info(&format!(
+            "Checking password health (detailed: {})",
+            detailed
+        ));
+
         let analysis = Self::analyze_password(password);
+
+        LoggingManager::info(&format!(
+            "Password analysis completed: rating={}, score={}, length={}, entropy={:.2}",
+            analysis.rating, analysis.score.total, analysis.length, analysis.entropy
+        ));
 
         Self::print_result(&analysis, detailed);
 

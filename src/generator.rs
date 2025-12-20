@@ -5,6 +5,8 @@ use ring::hkdf;
 use ring::rand::{SecureRandom, SystemRandom};
 
 use crate::CONFIG;
+use crate::errors::GeneratorError;
+use crate::logging::LoggingManager;
 
 const CHARSET: &[u8] =
     b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
@@ -21,32 +23,47 @@ impl Generator {
     /// # Returns
     ///
     /// Returns the generated password as String, else returns an error
-    pub fn generate_random_password(length: usize) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn generate_random_password(length: usize) -> Result<String, GeneratorError> {
+        LoggingManager::info(&format!(
+            "Generating random password with length: {}",
+            length
+        ));
+
         if !(8..=64).contains(&length) {
-            return Err("Invalid password length".into());
+            let error = format!("Password length must be between 8 and 64, got: {}", length);
+            LoggingManager::error(&error);
+            return Err(GeneratorError::InvalidLength(error));
         }
 
         let rng = SystemRandom::new();
         const MAX_RETRIES: u32 = 100;
 
-        for _ in 0..MAX_RETRIES {
+        for attempt in 0..MAX_RETRIES {
             let mut password = String::with_capacity(length);
 
             for _ in 0..length {
                 let mut bytes = [0u8; 4];
-                rng.fill(&mut bytes)
-                    .map_err(|e| format!("Failed to fill random bytes: {}", e))?;
+                rng.fill(&mut bytes).map_err(|e| {
+                    let error = format!("Failed to fill random bytes: {}", e);
+                    LoggingManager::error(&error);
+                    GeneratorError::RandomBytesError(error)
+                })?;
                 let random_u32 = u32::from_be_bytes(bytes);
                 let idx = (random_u32 as usize) % CHARSET.len();
                 password.push(CHARSET[idx] as char);
             }
 
             if Self::is_valid_password(&password) {
+                LoggingManager::info(&format!(
+                    "Successfully generated random password (attempt {})",
+                    attempt + 1
+                ));
                 return Ok(password);
             }
         }
 
-        Err("Failed to generate valid password after maximum retries".into())
+        LoggingManager::error("Failed to generate valid password after maximum retries");
+        Err(GeneratorError::MaxRetriesExceeded)
     }
 
     /// Generate pattern based password
@@ -58,9 +75,15 @@ impl Generator {
     /// # Returns
     ///
     /// Returns the generated password as String, else returns an error
-    pub fn generate_pattern_password(pattern: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn generate_pattern_password(pattern: &str) -> Result<String, GeneratorError> {
+        LoggingManager::info(&format!(
+            "Generating pattern password with pattern: {}",
+            pattern
+        ));
+
         if pattern.is_empty() {
-            return Err("Pattern cannot be empty".into());
+            LoggingManager::error("Pattern cannot be empty");
+            return Err(GeneratorError::EmptyPattern);
         }
 
         const UPPERCASE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -78,22 +101,27 @@ impl Generator {
                 'D' => DIGITS,
                 'S' => SPECIAL,
                 _ => {
-                    return Err(format!(
+                    let error = format!(
                         "Invalid pattern character: '{}'. Only U, L, D, S are allowed",
                         c
-                    )
-                    .into());
+                    );
+                    LoggingManager::error(&error);
+                    return Err(GeneratorError::InvalidPatternCharacter(c));
                 }
             };
 
             let mut bytes = [0u8; 4];
-            rng.fill(&mut bytes)
-                .map_err(|e| format!("Failed to fill random bytes: {}", e))?;
+            rng.fill(&mut bytes).map_err(|e| {
+                let error = format!("Failed to fill random bytes: {}", e);
+                LoggingManager::error(&error);
+                GeneratorError::RandomBytesError(error)
+            })?;
             let random_u32 = u32::from_be_bytes(bytes);
             let idx = (random_u32 as usize) % charset.len();
             password.push(charset[idx] as char);
         }
 
+        LoggingManager::info("Successfully generated pattern password");
         Ok(password)
     }
 
@@ -127,18 +155,26 @@ impl Generator {
     /// # Returns
     ///
     /// Returns the generated password phrase as String, else returns an error
-    pub fn generate_phrase_password(
-        words_count: usize,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn generate_phrase_password(words_count: usize) -> Result<String, GeneratorError> {
+        LoggingManager::info(&format!(
+            "Generating phrase password with {} words",
+            words_count
+        ));
+
         if !(3..=20).contains(&words_count) {
-            return Err("Word count must be between 3 and 20".into());
+            LoggingManager::error(&format!(
+                "Word count must be between 3 and 20, got: {}",
+                words_count
+            ));
+            return Err(GeneratorError::InvalidWordCount);
         }
 
         let lang = CONFIG.language.lang.as_str();
         let words = Self::get_wordlist(lang);
 
         if words.is_empty() {
-            return Err("Wordlist is empty".into());
+            LoggingManager::error("Wordlist is empty");
+            return Err(GeneratorError::EmptyWordlist);
         }
 
         let rng = SystemRandom::new();
@@ -146,8 +182,11 @@ impl Generator {
 
         for i in 0..words_count {
             let mut bytes = [0u8; 4];
-            rng.fill(&mut bytes)
-                .map_err(|e| format!("Failed to fill random bytes: {}", e))?;
+            rng.fill(&mut bytes).map_err(|e| {
+                let error = format!("Failed to fill random bytes: {}", e);
+                LoggingManager::error(&error);
+                GeneratorError::RandomBytesError(error)
+            })?;
             let random_u32 = u32::from_be_bytes(bytes);
             let idx = (random_u32 as usize) % words.len();
 
@@ -157,6 +196,7 @@ impl Generator {
             phrase.push_str(words[idx]);
         }
 
+        LoggingManager::info("Successfully generated phrase password");
         Ok(phrase)
     }
 
@@ -175,11 +215,19 @@ impl Generator {
         seed: &str,
         salt: Option<&str>,
         service: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<String, GeneratorError> {
         const DEFAULT_LENGTH: usize = 20;
 
+        LoggingManager::info(&format!(
+            "Generating deterministic password (seed length: {}, salt: {}, service: {})",
+            seed.len(),
+            salt.is_some(),
+            service.is_some()
+        ));
+
         if seed.is_empty() {
-            return Err("Seed cannot be empty".into());
+            LoggingManager::error("Seed cannot be empty");
+            return Err(GeneratorError::EmptySeed);
         }
 
         let salt_bytes = salt.unwrap_or("kdguard").as_bytes();
@@ -203,13 +251,16 @@ impl Generator {
             let info_slice: &[u8] = &info;
             let info_array = [info_slice];
 
-            let okm = prk
-                .expand(&info_array, hkdf::HKDF_SHA256)
-                .map_err(|_| "Failed to expand HKDF")?;
+            let okm = prk.expand(&info_array, hkdf::HKDF_SHA256).map_err(|_| {
+                LoggingManager::error("Failed to expand HKDF");
+                GeneratorError::HkdfExpandError
+            })?;
 
             let output_slice = &mut output[..];
-            okm.fill(output_slice)
-                .map_err(|_| "Failed to fill HKDF output")?;
+            okm.fill(output_slice).map_err(|_| {
+                LoggingManager::error("Failed to fill HKDF output");
+                GeneratorError::HkdfFillError
+            })?;
 
             let mut password = String::with_capacity(DEFAULT_LENGTH);
             let offset = (retry as usize * 13) % OUTPUT_SIZE;
@@ -221,11 +272,18 @@ impl Generator {
             }
 
             if Self::is_valid_password(&password) {
+                LoggingManager::info(&format!(
+                    "Successfully generated deterministic password (retry {})",
+                    retry
+                ));
                 return Ok(password);
             }
         }
 
-        Err("Failed to generate valid password after maximum retries".into())
+        LoggingManager::error(
+            "Failed to generate valid deterministic password after maximum retries",
+        );
+        Err(GeneratorError::MaxRetriesExceeded)
     }
 
     /// Check valid password
@@ -272,25 +330,46 @@ impl Generator {
     /// # Returns
     ///
     /// Returns Ok(()) if successful, otherwise an error
-    pub fn save_to_file(
-        passwords: Vec<String>,
-        output_path: &Path,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save_to_file(passwords: Vec<String>, output_path: &Path) -> Result<(), GeneratorError> {
+        LoggingManager::info(&format!(
+            "Saving {} passwords to file: {}",
+            passwords.len(),
+            output_path.display()
+        ));
+
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
-            .open(output_path)?;
+            .open(output_path)
+            .map_err(|e| {
+                let error = format!("Failed to open file for writing: {}", e);
+                LoggingManager::error(&error);
+                GeneratorError::SaveFileError(error)
+            })?;
         let header = format!(
             "Generated with kdguard\nDate: {}\nGenerated passwords:\n",
             Local::now().format("%d.%m.%Y %H:%M:%S")
         );
-        file.write_all(header.as_bytes())?;
+        file.write_all(header.as_bytes()).map_err(|e| {
+            let error = format!("Failed to write header to file: {}", e);
+            LoggingManager::error(&error);
+            GeneratorError::SaveFileError(error)
+        })?;
         for password in passwords {
-            file.write_all(password.as_bytes())?;
-            file.write_all(b"\n")?;
+            file.write_all(password.as_bytes()).map_err(|e| {
+                let error = format!("Failed to write password to file: {}", e);
+                LoggingManager::error(&error);
+                GeneratorError::SaveFileError(error)
+            })?;
+            file.write_all(b"\n").map_err(|e| {
+                let error = format!("Failed to write newline to file: {}", e);
+                LoggingManager::error(&error);
+                GeneratorError::SaveFileError(error)
+            })?;
         }
 
+        LoggingManager::info("Successfully saved passwords to file");
         Ok(())
     }
 }
