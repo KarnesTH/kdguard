@@ -4,9 +4,11 @@
 
 # kdguard
 
-[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
-[![Release](https://img.shields.io/github/v/release/KarnesTH/kdguard)](https://github.com/KarnesTH/kdguard/releases/latest)
-[![CI](https://github.com/KarnesTH/kdguard/workflows/CI/badge.svg)](https://github.com/KarnesTH/kdguard/actions)
+[![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Release](https://img.shields.io/github/v/release/KarnesTH/kdguard?style=for-the-badge&logo=github&logoColor=white&label=Release&color=28a745)](https://github.com/KarnesTH/kdguard/releases/latest)
+[![CI](https://img.shields.io/badge/CI-Passing-28a745?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/KarnesTH/kdguard/actions)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=for-the-badge)](https://github.com/KarnesTH/kdguard/releases)
 
 A CLI tool to generate secure and random passwords.
 
