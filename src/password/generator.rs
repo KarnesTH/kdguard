@@ -132,13 +132,13 @@ impl Generator {
 
         match lang {
             "de" => WORDLIST_DE.get_or_init(|| {
-                include_str!("../data/wordlist_de.txt")
+                include_str!("../../data/wordlist_de.txt")
                     .lines()
                     .filter(|line| !line.trim().is_empty())
                     .collect()
             }),
             _ => WORDLIST_EN.get_or_init(|| {
-                include_str!("../data/wordlist_en.txt")
+                include_str!("../../data/wordlist_en.txt")
                     .lines()
                     .filter(|line| !line.trim().is_empty())
                     .collect()

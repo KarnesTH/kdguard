@@ -5,8 +5,7 @@ use lingua_i18n_rs::prelude::Lingua;
 use crate::config::Config;
 
 mod config;
-mod generator;
-mod health_check;
+mod password;
 mod uninstall;
 mod update;
 
@@ -116,9 +115,8 @@ pub enum ConfigCommands {
 pub mod prelude {
     pub use super::CONFIG;
     pub use crate::config::Config;
-    pub use crate::generator::Generator;
-    pub use crate::health_check::HealthCheck;
     pub use crate::logging::LoggingManager;
+    pub use crate::password::{Generator, HealthCheck};
     pub use crate::uninstall::UninstallManager;
     pub use crate::update::UpdateManager;
     pub use crate::{Cli, Commands, ConfigCommands, PasswordMode, parse_password_mode};

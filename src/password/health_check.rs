@@ -5,7 +5,7 @@ use crate::logging::LoggingManager;
 
 pub struct HealthCheck;
 
-const COMMON_PASSWORDS: &str = include_str!("../data/10k-most-common-passwords.txt");
+const COMMON_PASSWORDS: &str = include_str!("../../data/10k-most-common-passwords.txt");
 
 #[derive(Debug, Clone)]
 pub struct PasswordScore {
