@@ -8,6 +8,7 @@ mod config;
 mod password;
 mod uninstall;
 mod update;
+mod tui;
 
 mod errors;
 mod logging;
@@ -120,4 +121,5 @@ pub mod prelude {
     pub use crate::uninstall::UninstallManager;
     pub use crate::update::UpdateManager;
     pub use crate::{Cli, Commands, ConfigCommands, PasswordMode, parse_password_mode};
+    pub use crate::tui::{App, ui};
 }
