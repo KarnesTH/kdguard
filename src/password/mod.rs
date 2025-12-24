@@ -1,5 +1,5 @@
 mod generator;
-mod health_check;
+pub mod health_check;
 
 pub use generator::Generator;
-pub use health_check::HealthCheck;
+pub use health_check::{HealthCheck, PasswordAnalysis};

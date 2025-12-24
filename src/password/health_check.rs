@@ -68,7 +68,7 @@ impl HealthCheck {
     /// # Returns
     ///
     /// Returns the analysis of the password
-    fn analyze_password(password: &str) -> PasswordAnalysis {
+    pub fn analyze_password(password: &str) -> PasswordAnalysis {
         let length = password.len();
         let length_score = Self::calculate_length_score(length);
         let (diversity_score, has_lowercase, has_uppercase, has_digit, has_special) =

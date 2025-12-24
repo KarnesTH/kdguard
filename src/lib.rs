@@ -6,9 +6,9 @@ use crate::config::Config;
 
 mod config;
 mod password;
+pub mod tui;
 mod uninstall;
 mod update;
-mod tui;
 
 mod errors;
 mod logging;
@@ -18,7 +18,7 @@ lazy_static! {
     static ref DEFAULT_MODE_STR: String = CONFIG.general.default_mode.clone();
 }
 
-#[derive(ValueEnum, Clone)]
+#[derive(ValueEnum, Clone, PartialEq)]
 pub enum PasswordMode {
     Random,
     Pattern,
@@ -118,8 +118,8 @@ pub mod prelude {
     pub use crate::config::Config;
     pub use crate::logging::LoggingManager;
     pub use crate::password::{Generator, HealthCheck};
+    pub use crate::tui::{App, run, ui};
     pub use crate::uninstall::UninstallManager;
     pub use crate::update::UpdateManager;
     pub use crate::{Cli, Commands, ConfigCommands, PasswordMode, parse_password_mode};
-    pub use crate::tui::{App, ui};
 }
