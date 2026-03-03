@@ -2,13 +2,14 @@ use ratatui::Frame;
 
 use super::app::{App, CurrentScreen};
 use super::screens::{
-    render_check_screen, render_generator_screen, render_help_screen, render_main_screen,
-    render_settings_screen,
+    render_check_screen, render_generator_mode_selection, render_generator_screen,
+    render_help_screen, render_main_screen, render_settings_screen,
 };
 
 pub fn ui(frame: &mut Frame, app: &mut App) {
     match app.current_screen {
         CurrentScreen::Main => render_main_screen(frame, app),
+        CurrentScreen::GeneratorModeSelection => render_generator_mode_selection(frame, app),
         CurrentScreen::Generator => render_generator_screen(frame, app),
         CurrentScreen::Settings => render_settings_screen(frame, app),
         CurrentScreen::Help => render_help_screen(frame, app),

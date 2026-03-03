@@ -7,6 +7,7 @@ use ratatui::crossterm::event::KeyCode;
 
 pub enum CurrentScreen {
     Main,
+    GeneratorModeSelection,
     Generator,
     Settings,
     Help,
@@ -150,6 +151,9 @@ impl App {
 
         match self.current_screen {
             CurrentScreen::Main => self.handle_main_input(key),
+            CurrentScreen::GeneratorModeSelection => {
+                self.handle_generator_mode_selection_input(key)
+            }
             CurrentScreen::Generator => self.handle_generator_input(key),
             CurrentScreen::Settings => self.handle_settings_input(key),
             CurrentScreen::Help => self.handle_help_input(key),
@@ -247,15 +251,15 @@ impl App {
             KeyCode::Enter => {
                 match self.selected_index {
                     0 => {
-                        self.current_screen = CurrentScreen::Generator;
+                        self.current_screen = CurrentScreen::GeneratorModeSelection;
                         self.selected_index = 0;
                     }
                     1 => {
                         self.current_screen = CurrentScreen::Check;
                         self.password_input.clear();
                         self.check_result = None;
-                        self.input_field = InputField::PasswordCheck;
-                        self.input_mode = InputMode::Editing;
+                        self.input_field = InputField::None;
+                        self.input_mode = InputMode::Normal;
                     }
                     2 => {
                         self.current_screen = CurrentScreen::Settings;
@@ -276,6 +280,41 @@ impl App {
         }
     }
 
+    fn handle_generator_mode_selection_input(&mut self, key: KeyCode) -> bool {
+        match key {
+            KeyCode::Esc => {
+                self.current_screen = CurrentScreen::Main;
+                self.selected_index = 0;
+                false
+            }
+            KeyCode::Up => {
+                if self.generator.selected_mode_index > 0 {
+                    self.generator.selected_mode_index -= 1;
+                }
+                false
+            }
+            KeyCode::Down => {
+                if self.generator.selected_mode_index < 3 {
+                    self.generator.selected_mode_index += 1;
+                }
+                false
+            }
+            KeyCode::Enter => {
+                self.generator.mode = match self.generator.selected_mode_index {
+                    0 => PasswordMode::Random,
+                    1 => PasswordMode::Pattern,
+                    2 => PasswordMode::Phrase,
+                    3 => PasswordMode::Deterministic,
+                    _ => PasswordMode::Random,
+                };
+                self.current_screen = CurrentScreen::Generator;
+                self.selected_index = 0;
+                false
+            }
+            _ => false,
+        }
+    }
+
     fn handle_generator_input(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Esc => {
@@ -284,7 +323,7 @@ impl App {
                     self.input_field = InputField::None;
                     self.generator.editing_field = None;
                 } else {
-                    self.current_screen = CurrentScreen::Main;
+                    self.current_screen = CurrentScreen::GeneratorModeSelection;
                     self.selected_index = 0;
                     self.error_message = None;
                 }
@@ -304,81 +343,56 @@ impl App {
                         PasswordMode::Phrase => 1,
                         PasswordMode::Deterministic => 3,
                     };
-                    if self.selected_index <= max_index {
+                    if self.selected_index < max_index {
                         self.selected_index += 1;
-                        if self.selected_index > max_index {
-                            self.selected_index = max_index;
-                        }
                     }
                 }
                 false
             }
             KeyCode::Left => {
                 if self.input_mode == InputMode::Normal {
-                    if self.selected_index == 0 && self.generator.selected_mode_index > 0 {
-                        self.generator.selected_mode_index -= 1;
-                        self.generator.mode = match self.generator.selected_mode_index {
-                            0 => PasswordMode::Random,
-                            1 => PasswordMode::Pattern,
-                            2 => PasswordMode::Phrase,
-                            3 => PasswordMode::Deterministic,
-                            _ => PasswordMode::Random,
-                        };
-                    } else {
-                        match self.generator.mode {
-                            PasswordMode::Random => {
-                                if self.selected_index == 1 && self.generator.length > 8 {
-                                    self.generator.length -= 1;
-                                }
+                    match self.generator.mode {
+                        PasswordMode::Random => {
+                            if self.selected_index == 0 && self.generator.length > 8 {
+                                self.generator.length -= 1;
                             }
-                            PasswordMode::Phrase => {
-                                if self.selected_index == 1 {
-                                    if let Some(ref mut words) = self.generator.words {
-                                        if *words > 3 {
-                                            *words -= 1;
-                                        }
-                                    } else {
-                                        self.generator.words = Some(3);
-                                    }
-                                }
-                            }
-                            _ => {}
                         }
+                        PasswordMode::Phrase => {
+                            if self.selected_index == 0 {
+                                if let Some(ref mut words) = self.generator.words {
+                                    if *words > 3 {
+                                        *words -= 1;
+                                    }
+                                } else {
+                                    self.generator.words = Some(3);
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 }
                 false
             }
             KeyCode::Right => {
                 if self.input_mode == InputMode::Normal {
-                    if self.selected_index == 0 && self.generator.selected_mode_index < 3 {
-                        self.generator.selected_mode_index += 1;
-                        self.generator.mode = match self.generator.selected_mode_index {
-                            0 => PasswordMode::Random,
-                            1 => PasswordMode::Pattern,
-                            2 => PasswordMode::Phrase,
-                            3 => PasswordMode::Deterministic,
-                            _ => PasswordMode::Random,
-                        };
-                    } else {
-                        match self.generator.mode {
-                            PasswordMode::Random => {
-                                if self.selected_index == 1 && self.generator.length < 64 {
-                                    self.generator.length += 1;
-                                }
+                    match self.generator.mode {
+                        PasswordMode::Random => {
+                            if self.selected_index == 0 && self.generator.length < 64 {
+                                self.generator.length += 1;
                             }
-                            PasswordMode::Phrase => {
-                                if self.selected_index == 1 {
-                                    if let Some(ref mut words) = self.generator.words {
-                                        if *words < 20 {
-                                            *words += 1;
-                                        }
-                                    } else {
-                                        self.generator.words = Some(4);
-                                    }
-                                }
-                            }
-                            _ => {}
                         }
+                        PasswordMode::Phrase => {
+                            if self.selected_index == 0 {
+                                if let Some(ref mut words) = self.generator.words {
+                                    if *words < 20 {
+                                        *words += 1;
+                                    }
+                                } else {
+                                    self.generator.words = Some(4);
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 }
                 false
@@ -388,37 +402,74 @@ impl App {
                     self.input_mode = InputMode::Normal;
                     self.input_field = InputField::None;
                     self.generator.editing_field = None;
-                    false
-                } else if self.selected_index == 0 {
-                    // Mode selection - do nothing
-                    false
-                } else {
-                    self.generate_passwords();
-                    false
+                    return false;
                 }
+
+                match self.generator.mode {
+                    PasswordMode::Random => {
+                        self.generate_passwords();
+                    }
+                    PasswordMode::Pattern => {
+                        if self.selected_index == 0 {
+                            self.input_mode = InputMode::Editing;
+                            self.input_field = InputField::Generator(GeneratorField::Pattern);
+                            self.generator.editing_field = Some(GeneratorField::Pattern);
+                            self.generator.pattern.clear();
+                        } else {
+                            self.generate_passwords();
+                        }
+                    }
+                    PasswordMode::Phrase => {
+                        self.generate_passwords();
+                    }
+                    PasswordMode::Deterministic => match self.selected_index {
+                        0 => {
+                            self.input_mode = InputMode::Editing;
+                            self.input_field = InputField::Generator(GeneratorField::SeedEnv);
+                            self.generator.editing_field = Some(GeneratorField::SeedEnv);
+                            self.generator.seed_env.clear();
+                        }
+                        1 => {
+                            self.input_mode = InputMode::Editing;
+                            self.input_field = InputField::Generator(GeneratorField::Service);
+                            self.generator.editing_field = Some(GeneratorField::Service);
+                            self.generator.service.clear();
+                        }
+                        2 => {
+                            self.input_mode = InputMode::Editing;
+                            self.input_field = InputField::Generator(GeneratorField::Salt);
+                            self.generator.editing_field = Some(GeneratorField::Salt);
+                            self.generator.salt.clear();
+                        }
+                        _ => {
+                            self.generate_passwords();
+                        }
+                    },
+                }
+                false
             }
             KeyCode::Char('e') => {
                 if self.input_mode == InputMode::Normal {
                     match self.generator.mode {
                         PasswordMode::Pattern => {
-                            if self.selected_index == 1 {
+                            if self.selected_index == 0 {
                                 self.input_field = InputField::Generator(GeneratorField::Pattern);
                                 self.generator.editing_field = Some(GeneratorField::Pattern);
                                 self.input_mode = InputMode::Editing;
                             }
                         }
                         PasswordMode::Deterministic => match self.selected_index {
-                            1 => {
+                            0 => {
                                 self.input_field = InputField::Generator(GeneratorField::SeedEnv);
                                 self.generator.editing_field = Some(GeneratorField::SeedEnv);
                                 self.input_mode = InputMode::Editing;
                             }
-                            2 => {
+                            1 => {
                                 self.input_field = InputField::Generator(GeneratorField::Service);
                                 self.generator.editing_field = Some(GeneratorField::Service);
                                 self.input_mode = InputMode::Editing;
                             }
-                            3 => {
+                            2 => {
                                 self.input_field = InputField::Generator(GeneratorField::Salt);
                                 self.generator.editing_field = Some(GeneratorField::Salt);
                                 self.input_mode = InputMode::Editing;
@@ -438,7 +489,7 @@ impl App {
         match key {
             KeyCode::Esc => {
                 self.current_screen = CurrentScreen::Main;
-                self.selected_index = 0;
+                self.selected_index = 2; // Zurück zu Settings im Hauptmenü
                 false
             }
             KeyCode::Up => {
@@ -457,16 +508,39 @@ impl App {
                 self.save_settings();
                 false
             }
-            KeyCode::Left | KeyCode::Right => {
+            KeyCode::Left => {
                 match self.settings.selected_index {
                     1 => {
-                        if self.settings.default_length > 8 {
+                        if self.settings.default_length > 4 {
                             self.settings.default_length -= 1;
                         }
                     }
                     2 => {
                         if self.settings.default_count > 1 {
                             self.settings.default_count -= 1;
+                        }
+                    }
+                    3 => {
+                        self.settings.auto_save = !self.settings.auto_save;
+                    }
+                    _ => {}
+                }
+                false
+            }
+            KeyCode::Right => {
+                match self.settings.selected_index {
+                    0 => {
+                        self.input_mode = InputMode::Editing;
+                        self.input_field = InputField::Settings(SettingsField::Language);
+                    }
+                    1 => {
+                        if self.settings.default_length < 128 {
+                            self.settings.default_length += 1;
+                        }
+                    }
+                    2 => {
+                        if self.settings.default_count < 100 {
+                            self.settings.default_count += 1;
                         }
                     }
                     3 => {
@@ -502,8 +576,8 @@ impl App {
     }
 
     fn handle_check_input(&mut self, key: KeyCode) -> bool {
-        if self.input_mode == InputMode::Editing {
-            match key {
+        match self.input_mode {
+            InputMode::Editing => match key {
                 KeyCode::Enter => {
                     self.input_mode = InputMode::Normal;
                     self.input_field = InputField::None;
@@ -517,21 +591,12 @@ impl App {
                     self.input_field = InputField::None;
                     false
                 }
-                KeyCode::Char(c) => {
-                    self.password_input.push(c);
-                    false
-                }
-                KeyCode::Backspace => {
-                    self.password_input.pop();
-                    false
-                }
-                _ => false,
-            }
-        } else {
-            match key {
+                _ => false, // handle_editing_input wird von handle_input gerufen
+            },
+            InputMode::Normal => match key {
                 KeyCode::Esc => {
                     self.current_screen = CurrentScreen::Main;
-                    self.selected_index = 0;
+                    self.selected_index = 1; // Zurück zum Menüpunkt "Check"
                     self.password_input.clear();
                     self.check_result = None;
                     self.input_field = InputField::None;
@@ -547,7 +612,7 @@ impl App {
                     false
                 }
                 _ => false,
-            }
+            },
         }
     }
 
