@@ -100,8 +100,8 @@ pub fn render_generator_screen(frame: &mut Frame, app: &App) {
 
     render_parameters(frame, app, chunks[1]);
 
-    let footer_text = if app.error_message.is_some() {
-        format!("Error: {}", app.error_message.as_ref().unwrap())
+    let footer_text = if let Some(error) = &app.error_message {
+        format!("Error: {}", error)
     } else if !app.generated_passwords.is_empty() {
         format!("Generated {} password(s)", app.generated_passwords.len())
     } else {
