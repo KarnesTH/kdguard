@@ -165,10 +165,18 @@ impl App {
     fn handle_editing_input(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Enter => {
+                let current_field = self.input_field;
                 self.input_mode = InputMode::Normal;
                 self.input_field = InputField::None;
-                if let InputField::Generator(GeneratorField::Pattern) = self.input_field {
+
+                if let InputField::Generator(GeneratorField::Pattern) = current_field {
                     self.generator.editing_field = None;
+                }
+
+                if let InputField::PasswordCheck = current_field
+                    && !self.password_input.is_empty()
+                {
+                    self.check_password();
                 }
                 false
             }
@@ -182,6 +190,7 @@ impl App {
                 match self.input_field {
                     InputField::PasswordCheck => {
                         self.password_input.push(c);
+                        self.check_result = None;
                     }
                     InputField::Generator(GeneratorField::Pattern) => {
                         self.generator.pattern.push(c);
@@ -206,6 +215,7 @@ impl App {
                 match self.input_field {
                     InputField::PasswordCheck => {
                         self.password_input.pop();
+                        self.check_result = None;
                     }
                     InputField::Generator(GeneratorField::Pattern) => {
                         self.generator.pattern.pop();
@@ -577,22 +587,7 @@ impl App {
 
     fn handle_check_input(&mut self, key: KeyCode) -> bool {
         match self.input_mode {
-            InputMode::Editing => match key {
-                KeyCode::Enter => {
-                    self.input_mode = InputMode::Normal;
-                    self.input_field = InputField::None;
-                    if !self.password_input.is_empty() {
-                        self.check_password();
-                    }
-                    false
-                }
-                KeyCode::Esc => {
-                    self.input_mode = InputMode::Normal;
-                    self.input_field = InputField::None;
-                    false
-                }
-                _ => false, // handle_editing_input wird von handle_input gerufen
-            },
+            InputMode::Editing => false, // handled in handle_editing_input
             InputMode::Normal => match key {
                 KeyCode::Esc => {
                     self.current_screen = CurrentScreen::Main;
@@ -609,6 +604,16 @@ impl App {
                 }
                 KeyCode::Char('d') => {
                     self.show_detailed_check = !self.show_detailed_check;
+                    if !self.password_input.is_empty() {
+                        self.check_password();
+                    } else {
+                        self.check_result = None;
+                    }
+                    false
+                }
+                KeyCode::Char('c') => {
+                    self.password_input.clear();
+                    self.check_result = None;
                     false
                 }
                 _ => false,
