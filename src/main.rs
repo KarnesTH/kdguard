@@ -50,22 +50,22 @@ fn main() -> ExitCode {
 
     let result = match cli.command {
         Some(Commands::Check {
-                 ref password,
-                 detailed,
-             }) => CheckCommand::run(password.clone(), detailed),
+            ref password,
+            detailed,
+        }) => CheckCommand::run(password.clone(), detailed),
         Some(Commands::Config {
-                 command: ConfigCommands::Show,
-             }) => ConfigCommand::show(&config),
+            command: ConfigCommands::Show,
+        }) => ConfigCommand::show(&config),
         Some(Commands::Config {
-                 command:
-                 ConfigCommands::Edit {
-                     mode,
-                     password_length,
-                     count,
-                     auto_save,
-                     ref lang,
-                 },
-             }) => ConfigCommand::edit(
+            command:
+                ConfigCommands::Edit {
+                    mode,
+                    password_length,
+                    count,
+                    auto_save,
+                    ref lang,
+                },
+        }) => ConfigCommand::edit(
             &config,
             mode,
             password_length,
