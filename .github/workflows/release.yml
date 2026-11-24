@@ -46,13 +46,13 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
@@ -65,10 +65,10 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.target }}-cargo-
-      
+
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
-      
+
       - name: Set artifact name
         id: artifact
         shell: bash
@@ -79,7 +79,7 @@ jobs:
           else
             echo "name=kdguard_${VERSION}-${{ matrix.platform }}" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Prepare artifact (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -87,7 +87,9 @@ jobs:
           $artifactName = "${{ steps.artifact.outputs.name }}"
           New-Item -ItemType Directory -Force -Path release | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/kdguard.exe" "release/$artifactName"
-      
+          $hash = (Get-FileHash -Algorithm SHA256 "release/$artifactName").Hash.ToLower()
+          Set-Content -Path "release/$artifactName.sha256" -Value "$hash  $artifactName" -Encoding ascii
+
       - name: Prepare artifact (Unix)
         if: matrix.os != 'windows-latest'
         shell: bash
@@ -96,14 +98,16 @@ jobs:
           mkdir -p release
           cp target/${{ matrix.target }}/release/kdguard "release/${ARTIFACT_NAME}"
           chmod +x "release/${ARTIFACT_NAME}"
-      
+          cd release
+          shasum -a 256 "${ARTIFACT_NAME}" > "${ARTIFACT_NAME}.sha256"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: release/*
           retention-days: 90
-  
+
   create-release:
     name: Create Release
     needs: [get-version, release]
@@ -112,12 +116,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -127,4 +131,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

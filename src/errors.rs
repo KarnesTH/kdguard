@@ -1,122 +1,107 @@
-use lingua_i18n_rs::prelude::LinguaError;
+use std::path::PathBuf;
+
 use thiserror::Error;
+
+use crate::translation::Translation;
+
+fn text(key: &str) -> String {
+    Translation::get(&format!("errors.{key}"))
+}
+
+fn text_with(key: &str, name: &str, value: &str) -> String {
+    Translation::with(&format!("errors.{key}"), &[(name, value)])
+}
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Invalid config path: {0}")]
-    InvalidConfigPath(String),
-    #[error("Failed to load config: {0}")]
-    LoadConfigurationError(String),
-    #[error("Failed to save config: {0}")]
-    SaveConfigurationError(String),
-    #[error("Failed to parse config: {0}")]
-    ParseConfigurationError(String),
-    #[error("Failed to update config: {0}")]
-    UpdateConfigurationError(String),
-    #[error("Failed to print config: {0}")]
-    PrintConfigurationError(String),
-    #[error("Failed to get config path: {0}")]
-    GetConfigPathError(String),
-    #[error("Failed to get languages path: {0}")]
-    GetLanguagesPathError(String),
-    #[error("Failed to get config directory: {0}")]
-    GetConfigDirectoryError(String),
-    #[error("Failed to get languages directory: {0}")]
-    GetLanguagesDirectoryError(String),
-    #[error("Failed to create config directory: {0}")]
-    CreateConfigDirectoryError(String),
-    #[error("Failed to read config file: {0}")]
-    ReadConfigFileError(String),
-    #[error("Failed to write config file: {0}")]
-    WriteConfigFileError(String),
-    #[error("Failed to serialize config: {0}")]
-    SerializeConfigurationError(String),
-    #[error("Failed to set language: {0}")]
-    SetLanguageError(#[from] LinguaError),
+    #[error("{}", text("config.no_directory"))]
+    NoConfigDirectory,
+    #[error("{}  {}", text_with("config.read", "path", &.0.display().to_string()), .1)]
+    Read(PathBuf, String),
+    #[error("{}  {}", text_with("config.parse", "path", &.0.display().to_string()), .1)]
+    Parse(PathBuf, String),
+    #[error("{}  {}", text_with("config.write", "path", &.0.display().to_string()), .1)]
+    Write(PathBuf, String),
+    #[error("{}  {}", text("config.serialize"), .0)]
+    Serialize(String),
+    #[error("{}", text_with("config.invalid_length", "value", &.0.to_string()))]
+    InvalidLength(usize),
+    #[error("{}", text_with("config.invalid_count", "value", &.0.to_string()))]
+    InvalidCount(usize),
+    #[error("{}", text_with("config.invalid_language", "value", .0))]
+    InvalidLanguage(String),
 }
 
 #[derive(Error, Debug)]
 pub enum LoggingError {
-    #[error("Failed to initialize logging: {0}")]
-    Initialize(String),
-    #[error("Failed to get logging directory: {0}")]
-    GetDirectory(String),
-    #[error("Failed to create logging directory: {0}")]
+    #[error("{}", text("logging.no_directory"))]
+    NoDirectory,
+    #[error("{}  {}", text("logging.create_directory"), .0)]
     CreateDirectory(String),
-    #[error("Failed to write system info: {0}")]
-    WriteSystemInfo(String),
-    #[error("Failed to create log file: {0}")]
+    #[error("{}  {}", text("logging.create_file"), .0)]
     CreateFile(String),
-    #[error("Failed to cleanup old logs: {0}")]
-    Cleanup(String),
+    #[error("{}  {}", text("logging.initialize"), .0)]
+    Initialize(String),
 }
 
 #[derive(Error, Debug)]
 pub enum GeneratorError {
-    #[error("Invalid password length: {0}")]
-    InvalidLength(String),
-    #[error("Pattern cannot be empty")]
+    #[error("{}", text_with("generator.invalid_length", "value", &.0.to_string()))]
+    InvalidLength(usize),
+    #[error("{}", text_with("generator.invalid_count", "value", &.0.to_string()))]
+    InvalidCount(usize),
+    #[error("{}", text("generator.empty_pattern"))]
     EmptyPattern,
-    #[error("Invalid pattern character: {0}")]
+    #[error("{}", text_with("generator.invalid_pattern_character", "value", &.0.to_string()))]
     InvalidPatternCharacter(char),
-    #[error("Word count must be between 3 and 20")]
-    InvalidWordCount,
-    #[error("Wordlist is empty")]
-    EmptyWordlist,
-    #[error("Seed cannot be empty")]
+    #[error("{}", text_with("generator.invalid_word_count", "value", &.0.to_string()))]
+    InvalidWordCount(usize),
+    #[error("{}", text("generator.empty_seed"))]
     EmptySeed,
-    #[error("Failed to generate valid password after maximum retries")]
+    #[error("{}", text("generator.max_retries"))]
     MaxRetriesExceeded,
-    #[error("Failed to fill random bytes: {0}")]
-    RandomBytesError(String),
-    #[error("Failed to expand HKDF")]
-    HkdfExpandError,
-    #[error("Failed to fill HKDF output")]
-    HkdfFillError,
-    #[error("Failed to save passwords to file: {0}")]
-    SaveFileError(String),
+    #[error("{}", text("generator.random_bytes"))]
+    RandomBytes,
+    #[error("{}", text("generator.key_derivation"))]
+    KeyDerivation,
+    #[error("{}", text_with("generator.file_exists", "path", &.0.display().to_string()))]
+    FileExists(PathBuf),
+    #[error("{}  {}", text_with("generator.save_file", "path", &.0.display().to_string()), .1)]
+    SaveFile(PathBuf, String),
 }
 
 #[derive(Error, Debug)]
-pub enum HealthCheckError {
-    #[error("Failed to analyze password: {0}")]
-    AnalysisError(String),
+pub enum CommandError {
+    #[error("{}", text("command.seed_missing"))]
+    SeedMissing,
+    #[error("{}", text_with("command.seed_env_empty", "name", .0))]
+    SeedEnvEmpty(String),
+    #[error("{}  {}", text("command.read_stdin"), .0)]
+    ReadStdin(String),
+    #[error("{}", text("command.empty_password"))]
+    EmptyPassword,
 }
 
 #[derive(Error, Debug)]
 pub enum UninstallError {
-    #[error("Failed to get config path: {0}")]
-    GetConfigPathError(String),
-    #[error("Failed to get current executable path: {0}")]
-    GetExecutablePathError(String),
-    #[error("Invalid config path: no parent directory")]
-    InvalidConfigPath,
-    #[error("Invalid install path: no parent directory")]
-    InvalidInstallPath,
-    #[error("Failed to remove config directory: {0}")]
-    RemoveConfigDirectoryError(String),
-    #[error("Failed to remove alias file: {0}")]
-    RemoveAliasError(String),
-    #[error("Failed to remove install directory: {0}")]
-    RemoveInstallDirectoryError(String),
-    #[error("Failed to remove executable: {0}")]
-    RemoveExecutableError(String),
+    #[error("{}  {}", text("uninstall.executable"), .0)]
+    Executable(String),
+    #[error("{}  {}", text_with("uninstall.remove", "path", &.0.display().to_string()), .1)]
+    Remove(PathBuf, String),
 }
 
 #[derive(Error, Debug)]
 pub enum UpdateError {
-    #[error("Failed to get latest tag from GitHub: {0}")]
-    GetLatestTag(String),
-    #[error("GitHub API returned error: {0}")]
-    GitHubApi(String),
-    #[error("Failed to parse JSON response: {0}")]
-    ParseJson(String),
-    #[error("Failed to parse tag_name from GitHub API response")]
-    ParseTagName,
-    #[error("Failed to update kdguard: {0}")]
-    Update(String),
-    #[error("Failed to spawn update process: {0}")]
-    SpawnProcess(String),
-    #[error("Update process failed: {0}")]
-    UpdateProcess(String),
+    #[error("{}  {}", text("update.curl"), .0)]
+    Curl(String),
+    #[error("{}", text("update.invalid_response"))]
+    InvalidResponse,
+    #[error("{}", text_with("update.unsupported_platform", "value", .0))]
+    UnsupportedPlatform(String),
+    #[error("{}", text("update.checksum_missing"))]
+    ChecksumMissing,
+    #[error("{}", text("update.checksum_mismatch"))]
+    ChecksumMismatch,
+    #[error("{}  {}", text("update.install"), .0)]
+    Install(String),
 }

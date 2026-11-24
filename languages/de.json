@@ -1,103 +1,242 @@
 {
     "cli": {
-        "about": "Ein CLI Tool zum Generieren von sicheren und zufälligen Passwörtern",
+        "about": "Sichere Passwörter erzeugen und prüfen. Ohne Optionen startet die interaktive Abfrage.",
         "args": {
-            "length_help": "Länge des Passworts",
-            "count_help": "Anzahl der Passwörter",
-            "save_help": "Speichern der Passwörter in eine Datei",
-            "output_help": "Name der Datei zum Speichern der Passwörter (z.B. kdguard.txt)",
-            "pattern_help": "Pattern: U=Großbuchstaben, L=Kleinbuchstaben, D=Ziffern, S=Sonderzeichen",
-            "mode_help": "Modus: random, pattern, phrase oder deterministic",
-            "phrase_help": "Anzahl der Wörter in der Phrase",
-            "seed_env_help": "Umgebungsvariablenname, der das Seed für die deterministische Passwort-Generierung enthält",
-            "service_help": "Service-Name, der als Salt für die deterministische Passwort-Generierung verwendet wird",
-            "salt_help": "Benutzerdefiniertes Salt für die deterministische Passwort-Generierung (wird mit Service kombiniert, falls angegeben)"
+            "mode_help": "Modus, Standard aus der Konfiguration",
+            "length_help": "Länge der Passwörter, 8 bis 64",
+            "count_help": "Anzahl der Passwörter, 1 bis 100",
+            "save_help": "Passwörter in eine Datei speichern",
+            "no_save_help": "Nicht speichern, auch wenn automatisches Speichern an ist",
+            "output_help": "Datei zum Speichern (Standard: kdguard.txt)",
+            "pattern_help": "Muster: U Großbuchstabe, L Kleinbuchstabe, D Ziffer, S Sonderzeichen",
+            "words_help": "Anzahl der Wörter einer Passphrase, 3 bis 20",
+            "seed_env_help": "Name der Umgebungsvariable mit dem Master-Seed (sonst verdeckte Abfrage)",
+            "service_help": "Dienst, für den das deterministische Passwort abgeleitet wird",
+            "salt_help": "Zusätzliches Salt für deterministische Passwörter"
         },
-        "cli_commands": {
-            "check_password": {
-                "about": "Passwort Überprüfung",
-                "password_help": "Das Passwort zum Überprüfen. Benutze '' für Passwörter mit Sonderzeichen wie '$', '!', '(', ')'",
-                "detailed_help": "Anzeigen der detaillierten Analyse"
+        "commands": {
+            "check": {
+                "about": "Passwort prüfen (ohne Argument verdeckte Abfrage, '-' liest von stdin)",
+                "password_help": "Zu prüfendes Passwort. Besser weglassen, sonst landet es im Shell-Verlauf",
+                "detailed_help": "Punkte je Kategorie anzeigen"
             },
-            "manage_config": {
-                "about": "Konfiguration Verwaltung",
-                "show_about": "Anzeigen der aktuellen Konfiguration",
-                "edit_about": "Bearbeiten der Konfiguration",
-                "edit_language_help": "Sprache der Konfiguration",
-                "edit_default_length_help": "Standardlänge der Passwörter",
-                "edit_default_count_help": "Standardanzahl der Passwörter",
-                "edit_auto_save_help": "Automatisches Speichern der Passwörter"
+            "config": {
+                "about": "Konfiguration anzeigen und bearbeiten",
+                "show_about": "Aktuelle Konfiguration anzeigen",
+                "edit_about": "Konfiguration bearbeiten (ohne Optionen interaktiv)",
+                "mode_help": "Standardmodus",
+                "length_help": "Standardlänge, 8 bis 64",
+                "count_help": "Standardanzahl, 1 bis 100",
+                "auto_save_help": "Passwörter automatisch speichern",
+                "language_help": "Sprache: de oder en"
             },
             "uninstall": {
-                "about": "Deinstallation von kdguard",
-                "confirm": "Möchtest du kdguard wirklich deinstallieren?",
-                "cancelled": "Deinstallation abgebrochen",
-                "success": "Deinstallation erfolgreich"
-            },
-            "update": {
-                "confirm": "Eine neue Version von kdguard ist verfügbar. Möchtest du kdguard aktualisieren?"
+                "about": "kdguard deinstallieren"
             }
         }
     },
-    "commands": {
-        "generate": {
-            "title": "Passwort Generierung"
+    "generate": {
+        "subtitle": "v{{version}} · Sichere Passwörter",
+        "modes": {
+            "random": "Zufällige Zeichen",
+            "pattern": "Nach eigenem Muster",
+            "phrase": "Passphrase aus Wörtern",
+            "deterministic": "Aus Master-Seed und Dienst abgeleitet"
         },
-        "check": {
-            "title": "Passwort Zustandsprüfung",
-            "subtitle_detailed": "Detaillierte Analyse",
-            "subtitle_categories": "Zeichen Kategorien",
-            "score_rating": {
-                "weak": "Schwach",
-                "medium": "Mittel",
-                "strong": "Stark",
-                "very_strong": "Sehr stark"
+        "ask": {
+            "mode": "Modus",
+            "length": "Länge",
+            "pattern": "Muster (U L D S)",
+            "words": "Wörter",
+            "seed": "Master-Seed",
+            "service": "Dienst",
+            "count": "Anzahl",
+            "save": "In Datei speichern?",
+            "file": "Datei",
+            "overwrite": "{{path}} existiert bereits. Überschreiben?"
+        },
+        "seed_weak": "Der Master-Seed ist schwach",
+        "seed_weak_hint": "alle abgeleiteten Passwörter sind nur so sicher wie er",
+        "detail": {
+            "length": "{{length}} Zeichen",
+            "words": "{{words}} Wörter",
+            "no_service": "ohne Dienst"
+        },
+        "title_one": "Passwort",
+        "title_many": "Passwörter",
+        "generated_one": "1 Passwort erzeugt",
+        "generated_many": "{{count}} Passwörter erzeugt",
+        "saved": "Gespeichert",
+        "not_saved": "Nicht gespeichert"
+    },
+    "check": {
+        "title": "Passwortprüfung",
+        "score_title": "Punkte",
+        "ask": {
+            "password": "Passwort"
+        },
+        "history_warning": "Das Passwort steht jetzt im Shell-Verlauf",
+        "history_hint": "nutze kdg check ohne Argument",
+        "rating": {
+            "weak": "Schwach",
+            "medium": "Mittel",
+            "strong": "Stark",
+            "very_strong": "Sehr stark"
+        },
+        "label": {
+            "length": "Länge",
+            "entropy": "Entropie",
+            "classes": "Zeichen",
+            "diversity": "Vielfalt",
+            "complexity": "Komplexität"
+        },
+        "value": {
+            "length": "{{length}} Zeichen",
+            "entropy": "{{entropy}} bit"
+        },
+        "no_issues": "Keine Schwachstellen gefunden",
+        "issues": {
+            "too_short": {
+                "warning": "Zu kurz",
+                "suggestion": "mindestens 12 Zeichen verwenden"
             },
-            "rating": "Bewertung: {{rating}} ({{points}} Punkte)",
-            "length": "Länge: {{length}} Zeichen",
-            "length_score": "Längenbewertung: {{length_score}} / 25",
-            "diversity_score": "Diversitätsbewertung: {{diversity_score}} / 30",
-            "complexity_score": "Komplexitätsbewertung: {{complexity_score}} / 25",
-            "entropy_score": "Entropiebewertung: {{entropy_score}} / 20",
-            "entropy": "Entropie: {{entropy}} Bits",
-            "warnings": {
-                "title": "Warnungen",
-                "password_too_short": "Passwort ist zu kurz",
-                "no_lowercase": "Keine Kleinbuchstaben vorhanden",
-                "no_uppercase": "Keine Großbuchstaben vorhanden",
-                "no_digits": "Keine Ziffern vorhanden",
-                "no_special": "Keine Sonderzeichen vorhanden",
-                "common_patterns": "Häufige Muster erkannt",
-                "repetitions": "Wiederholungen erkannt"
+            "no_lowercase": {
+                "warning": "Keine Kleinbuchstaben",
+                "suggestion": "Kleinbuchstaben ergänzen"
             },
-            "suggestions": {
-                "title": "Vorschläge",
-                "password_to_short": "Benutze mindestens 8 Zeichen",
-                "add_lowercase": "Füge Kleinbuchstaben hinzu",
-                "add_uppercase": "Füge Großbuchstaben hinzu",
-                "add_digits": "Füge Ziffern hinzu",
-                "add_special": "Füge Sonderzeichen hinzu",
-                "avoid_simple_sequences": "Vermeide einfache Sequenzen wie '123' oder 'abc'",
-                "avoid_repetitions": "Vermeide Wiederholungen"
+            "no_uppercase": {
+                "warning": "Keine Großbuchstaben",
+                "suggestion": "Großbuchstaben ergänzen"
             },
-            "lowercase": "Kleinbuchstaben {{lowercase}}",
-            "uppercase": "Großbuchstaben {{uppercase}}",
-            "digits": "Ziffern {{digits}}",
-            "special": "Sonderzeichen {{special}}"
+            "no_digits": {
+                "warning": "Keine Ziffern",
+                "suggestion": "Ziffern ergänzen"
+            },
+            "no_special": {
+                "warning": "Keine Sonderzeichen",
+                "suggestion": "ein Sonderzeichen erhöht die Stärke deutlich"
+            },
+            "common_password": {
+                "warning": "Bekanntes Passwort",
+                "suggestion": "steht in der Liste der häufigsten Passwörter, nicht verwenden"
+            },
+            "common_pattern": {
+                "warning": "Enthält ein häufiges Passwort",
+                "suggestion": "bekannte Wörter und Zahlenfolgen vermeiden"
+            },
+            "repetitions": {
+                "warning": "Wiederholte Zeichen",
+                "suggestion": "drei gleiche Zeichen hintereinander vermeiden"
+            }
         }
     },
     "config": {
-        "show": {
-            "title": "Aktuelle Konfiguration",
-            "subtitle_general": "Allgemeine Einstellungen",
-            "subtitle_language": "Spracheinstellungen",
-            "default_length": "Standardlänge: {{default_length}}",
-            "default_count": "Standardanzahl: {{default_count}}",
-            "auto_save": "Automatisches Speichern: {{auto_save}}",
-            "language": "Sprache: {{language}}"
+        "title": "Konfiguration",
+        "label": {
+            "mode": "Modus",
+            "length": "Länge",
+            "count": "Anzahl",
+            "auto_save": "Automatisch speichern",
+            "language": "Sprache"
         },
-        "edit": {
-            "success": "Konfiguration erfolgreich aktualisiert"
+        "yes": "ja",
+        "no": "nein",
+        "saved": "Konfiguration gespeichert"
+    },
+    "update": {
+        "check_failed": "Update-Prüfung fehlgeschlagen",
+        "confirm": "Version {{version}} ist verfügbar. Jetzt aktualisieren?",
+        "downloading": "Lade Version {{version}}",
+        "done": "Auf Version {{version}} aktualisiert",
+        "restart": "gilt ab dem nächsten Start",
+        "failed": "Update fehlgeschlagen"
+    },
+    "uninstall": {
+        "confirm": "kdguard mit Konfiguration und Logs wirklich deinstallieren?",
+        "cancelled": "Deinstallation abgebrochen",
+        "removed": "Entfernt",
+        "done": "kdguard deinstalliert"
+    },
+    "help": {
+        "help": "Hilfe anzeigen",
+        "version": "Version anzeigen",
+        "options": "optionen",
+        "command": "befehl",
+        "hint": "kdg -h zeigt alle Befehle und Optionen",
+        "values": {
+            "mode": "modus",
+            "length": "länge",
+            "count": "anzahl",
+            "output": "datei",
+            "pattern": "muster",
+            "words": "wörter",
+            "seed_env": "variable",
+            "service": "dienst",
+            "salt": "salt",
+            "password": "passwort",
+            "password_length": "länge",
+            "auto_save": "wert",
+            "lang": "sprache"
+        }
+    },
+    "errors": {
+        "title": "Fehler",
+        "arguments": "Ungültige Argumente",
+        "config": {
+            "load": "Konfiguration konnte nicht geladen werden",
+            "no_directory": "Kein Konfigurationsverzeichnis gefunden",
+            "read": "{{path}} konnte nicht gelesen werden",
+            "parse": "{{path}} ist ungültig",
+            "write": "{{path}} konnte nicht geschrieben werden",
+            "serialize": "Konfiguration konnte nicht erstellt werden",
+            "invalid_length": "Länge {{value}} ist ungültig, erlaubt sind 8 bis 64",
+            "invalid_count": "Anzahl {{value}} ist ungültig, erlaubt sind 1 bis 100",
+            "invalid_language": "Sprache {{value}} wird nicht unterstützt, erlaubt sind de und en"
+        },
+        "logging": {
+            "disabled": "Logging ist deaktiviert",
+            "no_directory": "Kein Datenverzeichnis gefunden",
+            "create_directory": "Log-Verzeichnis konnte nicht erstellt werden",
+            "create_file": "Log-Datei konnte nicht erstellt werden",
+            "initialize": "Logger konnte nicht gestartet werden"
+        },
+        "generator": {
+            "invalid_length": "Länge {{value}} ist ungültig, erlaubt sind 8 bis 64",
+            "invalid_count": "Anzahl {{value}} ist ungültig, erlaubt sind 1 bis 100",
+            "empty_pattern": "Ein Muster wird benötigt, z.B. ULLDDS",
+            "invalid_pattern_character": "{{value}} ist im Muster nicht erlaubt, nur U, L, D und S",
+            "invalid_word_count": "{{value}} Wörter sind ungültig, erlaubt sind 3 bis 20",
+            "empty_seed": "Der Master-Seed darf nicht leer sein",
+            "max_retries": "Kein gültiges Passwort erzeugt, bitte erneut versuchen",
+            "random_bytes": "Zufallszahlen konnten nicht erzeugt werden",
+            "key_derivation": "Schlüsselableitung fehlgeschlagen",
+            "file_exists": "{{path}} existiert bereits",
+            "save_file": "{{path}} konnte nicht gespeichert werden"
+        },
+        "command": {
+            "seed_missing": "Kein Master-Seed angegeben, nutze --seed-env <VARIABLE>",
+            "seed_env_empty": "Umgebungsvariable {{name}} ist leer oder nicht gesetzt",
+            "read_stdin": "Eingabe konnte nicht gelesen werden",
+            "empty_password": "Kein Passwort angegeben"
+        },
+        "uninstall": {
+            "executable": "Programmpfad konnte nicht ermittelt werden",
+            "remove": "{{path}} konnte nicht entfernt werden"
+        },
+        "update": {
+            "curl": "curl fehlgeschlagen",
+            "invalid_response": "Ungültige Antwort von GitHub",
+            "unsupported_platform": "Für {{value}} gibt es kein Release",
+            "checksum_missing": "Keine Prüfsumme zum Release gefunden, Update abgebrochen",
+            "checksum_mismatch": "Prüfsumme stimmt nicht, Update abgebrochen",
+            "install": "Installation fehlgeschlagen"
+        },
+        "argument": {
+            "unknown": "Unbekannte Option {{arg}}",
+            "unknown_command": "Unbekannter Befehl {{command}}",
+            "invalid_value": "Ungültiger Wert '{{value}}' für {{arg}}",
+            "conflict": "{{arg}} lässt sich nicht mit {{other}} kombinieren",
+            "missing_command": "Befehl fehlt"
         }
     }
 }

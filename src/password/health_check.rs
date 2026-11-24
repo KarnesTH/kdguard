@@ -1,11 +1,56 @@
-use lingua_i18n_rs::prelude::Lingua;
+use std::sync::OnceLock;
 
-use crate::errors::HealthCheckError;
-use crate::logging::LoggingManager;
-
-pub struct HealthCheck;
+use crate::password::generator::SPECIAL;
 
 const COMMON_PASSWORDS: &str = include_str!("../../data/10k-most-common-passwords.txt");
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rating {
+    Weak,
+    Medium,
+    Strong,
+    VeryStrong,
+}
+
+impl Rating {
+    /// Returns the translation key below `commands.check.rating`.
+    pub fn key(&self) -> &'static str {
+        match self {
+            Rating::Weak => "weak",
+            Rating::Medium => "medium",
+            Rating::Strong => "strong",
+            Rating::VeryStrong => "very_strong",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Issue {
+    TooShort,
+    NoLowercase,
+    NoUppercase,
+    NoDigits,
+    NoSpecial,
+    CommonPassword,
+    CommonPattern,
+    Repetitions,
+}
+
+impl Issue {
+    /// Returns the translation key below `commands.check.issues`.
+    pub fn key(&self) -> &'static str {
+        match self {
+            Issue::TooShort => "too_short",
+            Issue::NoLowercase => "no_lowercase",
+            Issue::NoUppercase => "no_uppercase",
+            Issue::NoDigits => "no_digits",
+            Issue::NoSpecial => "no_special",
+            Issue::CommonPassword => "common_password",
+            Issue::CommonPattern => "common_pattern",
+            Issue::Repetitions => "repetitions",
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct PasswordScore {
@@ -19,105 +64,69 @@ pub struct PasswordScore {
 #[derive(Debug, Clone)]
 pub struct PasswordAnalysis {
     pub score: PasswordScore,
-    pub rating: String,
+    pub rating: Rating,
     pub has_lowercase: bool,
     pub has_uppercase: bool,
     pub has_digit: bool,
     pub has_special: bool,
     pub length: usize,
     pub entropy: f64,
-    pub warnings: Vec<String>,
-    pub suggestions: Vec<String>,
+    pub issues: Vec<Issue>,
 }
 
+struct CharacterClasses {
+    lowercase: bool,
+    uppercase: bool,
+    digit: bool,
+    special: bool,
+    other: bool,
+}
+
+pub struct HealthCheck;
+
 impl HealthCheck {
-    /// Check a given password
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to check
-    /// * `detailed`: Whether to show detailed analysis
-    ///
-    /// # Returns
-    ///
-    /// Returns the analysis of the password
-    pub fn check_password(password: &str, detailed: bool) -> Result<(), HealthCheckError> {
-        LoggingManager::info(&format!(
-            "Checking password health (detailed: {})",
-            detailed
-        ));
-
-        let analysis = Self::analyze_password(password);
-
-        LoggingManager::info(&format!(
-            "Password analysis completed: rating={}, score={}, length={}, entropy={:.2}",
-            analysis.rating, analysis.score.total, analysis.length, analysis.entropy
-        ));
-
-        Self::print_result(&analysis, detailed);
-
-        Ok(())
-    }
-
-    /// Analyze a given password
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to analyze
-    ///
-    /// # Returns
-    ///
-    /// Returns the analysis of the password
+    /// Scores the password from length (0 to 25), character classes (0 to 30), common
+    /// passwords and repetitions (0 to 25) and entropy (0 to 20) and lists the found issues.
     pub fn analyze_password(password: &str) -> PasswordAnalysis {
-        let length = password.len();
-        let length_score = Self::calculate_length_score(length);
-        let (diversity_score, has_lowercase, has_uppercase, has_digit, has_special) =
-            Self::calculate_diversity_score(password);
-        let complexity_score = Self::calculate_complexity_score(password);
-        let (entropy_score, entropy) = Self::calculate_entropy_score(password);
+        let length = password.chars().count();
+        let classes = Self::character_classes(password);
+        let common = Self::common_match(password);
+        let repetitions = Self::has_repetitions(password);
+        let entropy = Self::entropy(length, &classes);
 
-        let total = length_score + diversity_score + complexity_score + entropy_score;
-        let rating = Self::score_to_rating(total);
+        let length_score = Self::length_score(length);
+        let diversity_score = Self::diversity_score(&classes);
+        let complexity_score = match common {
+            Some(_) => 0,
+            None => 15,
+        } + if repetitions { 0 } else { 10 };
+        let entropy_score = Self::entropy_score(entropy);
+        let mut total = length_score + diversity_score + complexity_score + entropy_score;
+        if common == Some(Issue::CommonPassword) {
+            total = total.min(20);
+        }
 
-        let mut warnings = Vec::new();
-        let mut suggestions = Vec::new();
-
+        let mut issues = Vec::new();
         if length < 8 {
-            warnings.push(Lingua::t("commands.check.warnings.password_too_short", &[]).unwrap());
-            suggestions
-                .push(Lingua::t("commands.check.suggestions.password_to_short", &[]).unwrap());
+            issues.push(Issue::TooShort);
         }
-
-        if !has_lowercase {
-            warnings.push(Lingua::t("commands.check.warnings.no_lowercase", &[]).unwrap());
-            suggestions.push(Lingua::t("commands.check.suggestions.add_lowercase", &[]).unwrap());
+        if !classes.lowercase {
+            issues.push(Issue::NoLowercase);
         }
-
-        if !has_uppercase {
-            warnings.push(Lingua::t("commands.check.warnings.no_uppercase", &[]).unwrap());
-            suggestions.push(Lingua::t("commands.check.suggestions.add_uppercase", &[]).unwrap());
+        if !classes.uppercase {
+            issues.push(Issue::NoUppercase);
         }
-
-        if !has_digit {
-            warnings.push(Lingua::t("commands.check.warnings.no_digits", &[]).unwrap());
-            suggestions.push(Lingua::t("commands.check.suggestions.add_digits", &[]).unwrap());
+        if !classes.digit {
+            issues.push(Issue::NoDigits);
         }
-
-        if !has_special {
-            warnings.push(Lingua::t("commands.check.warnings.no_special", &[]).unwrap());
-            suggestions.push(Lingua::t("commands.check.suggestions.add_special", &[]).unwrap());
+        if !classes.special {
+            issues.push(Issue::NoSpecial);
         }
-
-        if Self::has_common_patterns(password) {
-            warnings.push(Lingua::t("commands.check.warnings.common_patterns", &[]).unwrap());
-            suggestions
-                .push(Lingua::t("commands.check.suggestions.avoid_simple_sequences", &[]).unwrap());
+        if let Some(issue) = common {
+            issues.push(issue);
         }
-
-        if Self::has_repetitions(password) {
-            warnings.push(Lingua::t("commands.check.warnings.repetitions", &[]).unwrap());
-            suggestions
-                .push(Lingua::t("commands.check.suggestions.avoid_repetitions", &[]).unwrap());
+        if repetitions {
+            issues.push(Issue::Repetitions);
         }
 
         PasswordAnalysis {
@@ -128,28 +137,42 @@ impl HealthCheck {
                 complexity_score,
                 entropy_score,
             },
-            rating,
-            has_lowercase,
-            has_uppercase,
-            has_digit,
-            has_special,
+            rating: Self::rating(total),
+            has_lowercase: classes.lowercase,
+            has_uppercase: classes.uppercase,
+            has_digit: classes.digit,
+            has_special: classes.special,
             length,
             entropy,
-            warnings,
-            suggestions,
+            issues,
         }
     }
 
-    /// Calculate the length score of a given password
-    ///
-    /// # Arguments
-    ///
-    /// * `length`: The length of the password
-    ///
-    /// # Returns
-    ///
-    /// Returns the length score
-    fn calculate_length_score(length: usize) -> u32 {
+    fn character_classes(password: &str) -> CharacterClasses {
+        let mut classes = CharacterClasses {
+            lowercase: false,
+            uppercase: false,
+            digit: false,
+            special: false,
+            other: false,
+        };
+        for c in password.chars() {
+            if c.is_lowercase() {
+                classes.lowercase = true;
+            } else if c.is_uppercase() {
+                classes.uppercase = true;
+            } else if c.is_ascii_digit() {
+                classes.digit = true;
+            } else if c.is_ascii() && SPECIAL.contains(&(c as u8)) {
+                classes.special = true;
+            } else {
+                classes.other = true;
+            }
+        }
+        classes
+    }
+
+    fn length_score(length: usize) -> u32 {
         match length {
             0..=7 => 0,
             8..=12 => 10,
@@ -158,421 +181,86 @@ impl HealthCheck {
         }
     }
 
-    /// Calculate the diversity score of a given password
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to analyze
-    ///
-    /// # Returns
-    ///
-    /// Returns the diversity score
-    fn calculate_diversity_score(password: &str) -> (u32, bool, bool, bool, bool) {
-        let mut has_lowercase = false;
-        let mut has_uppercase = false;
-        let mut has_digit = false;
-        let mut has_special = false;
-
-        let special_chars: &[char] = &[
-            '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+',
-        ];
-
-        for c in password.chars() {
-            if c.is_lowercase() {
-                has_lowercase = true;
-            } else if c.is_uppercase() {
-                has_uppercase = true;
-            } else if c.is_ascii_digit() {
-                has_digit = true;
-            } else if special_chars.contains(&c) {
-                has_special = true;
-            }
-        }
-
-        let mut score = 0;
-        if has_lowercase {
-            score += 5;
-        }
-        if has_uppercase {
-            score += 5;
-        }
-        if has_digit {
-            score += 5;
-        }
-        if has_special {
-            score += 5;
-        }
-
-        if has_lowercase && has_uppercase && has_digit && has_special {
-            score += 10;
-        }
-
-        (score, has_lowercase, has_uppercase, has_digit, has_special)
+    /// 5 points per present class (lowercase, uppercase, digit, special), 10 more when all four
+    /// are present.
+    fn diversity_score(classes: &CharacterClasses) -> u32 {
+        let present = [
+            classes.lowercase,
+            classes.uppercase,
+            classes.digit,
+            classes.special,
+        ]
+        .iter()
+        .filter(|present| **present)
+        .count() as u32;
+        present * 5 + if present == 4 { 10 } else { 0 }
     }
 
-    /// Calculate the complexity score of a given password
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to analyze
-    ///
-    /// # Returns
-    ///
-    /// Returns the complexity score
-    fn calculate_complexity_score(password: &str) -> u32 {
-        let mut score = 0;
+    /// Returns `CommonPassword` when the password equals an entry of the common password list
+    /// (case insensitive), `CommonPattern` when it contains one, otherwise `None`.
+    fn common_match(password: &str) -> Option<Issue> {
+        static COMMON: OnceLock<Vec<String>> = OnceLock::new();
+        let common = COMMON.get_or_init(|| {
+            COMMON_PASSWORDS
+                .lines()
+                .map(|line| line.trim().to_lowercase())
+                .filter(|line| !line.is_empty())
+                .collect()
+        });
 
-        if !Self::has_common_patterns(password) {
-            score += 15;
+        let lower = password.to_lowercase();
+        if common.contains(&lower) {
+            Some(Issue::CommonPassword)
+        } else if common.iter().any(|entry| lower.contains(entry.as_str())) {
+            Some(Issue::CommonPattern)
+        } else {
+            None
         }
-
-        if !Self::has_repetitions(password) {
-            score += 10;
-        }
-
-        score
     }
 
-    /// Check if a given password has common patterns
-    ///
-    /// Checks if the password (or parts of it) appear in the common passwords list
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to check
-    ///
-    /// # Returns
-    ///
-    /// Returns true if the password has common patterns, otherwise false
-    fn has_common_patterns(password: &str) -> bool {
-        let password_lower = password.to_lowercase();
-
-        for line in COMMON_PASSWORDS.lines() {
-            let common_pw = line.trim().to_lowercase();
-            if common_pw.is_empty() {
-                continue;
-            }
-
-            if password_lower == common_pw
-                || password_lower.contains(&common_pw)
-                || common_pw.contains(&password_lower)
-            {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Check if a given password has repetitions
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to check
-    ///
-    /// # Returns
-    ///
-    /// Returns true if the password has repetitions, otherwise false
+    /// True when the same character appears three times in a row.
     fn has_repetitions(password: &str) -> bool {
         let chars: Vec<char> = password.chars().collect();
-        if chars.len() < 3 {
-            return false;
-        }
-
-        for i in 0..chars.len() - 2 {
-            if chars[i] == chars[i + 1] && chars[i + 1] == chars[i + 2] {
-                return true;
-            }
-        }
-
-        false
+        chars.windows(3).any(|w| w[0] == w[1] && w[1] == w[2])
     }
 
-    /// Calculate the entropy score of a given password
-    ///
-    /// # Arguments
-    ///
-    /// * `password`: The password to analyze
-    ///
-    /// # Returns
-    ///
-    /// Returns the entropy score
-    fn calculate_entropy_score(password: &str) -> (u32, f64) {
-        let mut charset_size = 0;
-
-        let mut has_lowercase = false;
-        let mut has_uppercase = false;
-        let mut has_digit = false;
-        let mut has_special = false;
-
-        let special_chars: &[char] = &[
-            '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+',
-        ];
-
-        for c in password.chars() {
-            if c.is_lowercase() && !has_lowercase {
-                charset_size += 26;
-                has_lowercase = true;
-            } else if c.is_uppercase() && !has_uppercase {
-                charset_size += 26;
-                has_uppercase = true;
-            } else if c.is_ascii_digit() && !has_digit {
-                charset_size += 10;
-                has_digit = true;
-            } else if special_chars.contains(&c) && !has_special {
-                charset_size += special_chars.len();
-                has_special = true;
-            }
+    /// Length times log2 of the pool size: 26 per letter case, 10 digits, 14 special characters,
+    /// 32 for any other character.
+    fn entropy(length: usize, classes: &CharacterClasses) -> f64 {
+        let pool = [
+            (classes.lowercase, 26),
+            (classes.uppercase, 26),
+            (classes.digit, 10),
+            (classes.special, SPECIAL.len()),
+            (classes.other, 32),
+        ]
+        .iter()
+        .filter(|(present, _)| *present)
+        .map(|(_, size)| size)
+        .sum::<usize>();
+        if pool == 0 {
+            return 0.0;
         }
+        length as f64 * (pool as f64).log2()
+    }
 
-        if charset_size == 0 {
-            return (0, 0.0);
-        }
-
-        let length = password.len() as f64;
-        let entropy = length * (charset_size as f64).log2();
-
-        let score = match entropy {
+    fn entropy_score(entropy: f64) -> u32 {
+        match entropy {
+            e if e <= 0.0 => 0,
             e if e < 30.0 => 5,
             e if e < 40.0 => 10,
             e if e < 50.0 => 15,
             _ => 20,
-        };
-
-        (score, entropy)
+        }
     }
 
-    /// Convert a score to a rating
-    ///
-    /// # Arguments
-    ///
-    /// * `score`: The score to convert
-    ///
-    /// # Returns
-    ///
-    /// Returns the rating
-    fn score_to_rating(score: u32) -> String {
+    fn rating(score: u32) -> Rating {
         match score {
-            0..=40 => Lingua::t("commands.check.score_rating.weak", &[]).unwrap(),
-            41..=60 => Lingua::t("commands.check.score_rating.medium", &[]).unwrap(),
-            61..=80 => Lingua::t("commands.check.score_rating.strong", &[]).unwrap(),
-            _ => Lingua::t("commands.check.score_rating.very_strong", &[]).unwrap(),
+            0..=40 => Rating::Weak,
+            41..=60 => Rating::Medium,
+            61..=80 => Rating::Strong,
+            _ => Rating::VeryStrong,
         }
-    }
-
-    /// Print the result of a password analysis
-    ///
-    /// # Arguments
-    ///
-    /// * `analysis`: The analysis to print
-    /// * `detailed`: Whether to show detailed analysis
-    ///
-    /// # Returns
-    ///
-    /// Returns nothing
-    fn print_result(analysis: &PasswordAnalysis, detailed: bool) {
-        let weak = Lingua::t("commands.check.score_rating.weak", &[]).unwrap();
-        let medium = Lingua::t("commands.check.score_rating.medium", &[]).unwrap();
-        let strong = Lingua::t("commands.check.score_rating.strong", &[]).unwrap();
-        let very_strong = Lingua::t("commands.check.score_rating.very_strong", &[]).unwrap();
-
-        let color = match analysis.rating.as_str() {
-            s if s == weak => "\x1b[1;31m",
-            s if s == medium => "\x1b[1;33m",
-            s if s == strong => "\x1b[1;32m",
-            s if s == very_strong => "\x1b[1;32m",
-            _ => "\x1b[0m",
-        };
-
-        println!(
-            "\n\x1b[1;36m{}\x1b[0m",
-            Lingua::t("commands.check.title", &[]).unwrap()
-        );
-        println!("{}", "=".repeat(50));
-        println!(
-            "{}",
-            Lingua::t(
-                "commands.check.rating",
-                &[
-                    (
-                        "rating",
-                        format!("{}{}\x1b[0m", color, analysis.rating).as_str()
-                    ),
-                    ("points", analysis.score.total.to_string().as_str())
-                ]
-            )
-            .unwrap()
-        );
-        println!(
-            "{}",
-            Lingua::t(
-                "commands.check.length",
-                &[("length", analysis.length.to_string().as_str())]
-            )
-            .unwrap()
-        );
-
-        if detailed {
-            println!(
-                "\n\x1b[1;33m{}\x1b[0m",
-                Lingua::t("commands.check.subtitle_detailed", &[]).unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.length_score",
-                    &[(
-                        "length_score",
-                        analysis.score.length_score.to_string().as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.diversity_score",
-                    &[(
-                        "diversity_score",
-                        analysis.score.diversity_score.to_string().as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.complexity_score",
-                    &[(
-                        "complexity_score",
-                        analysis.score.complexity_score.to_string().as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.entropy_score",
-                    &[(
-                        "entropy_score",
-                        analysis.score.entropy_score.to_string().as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.entropy",
-                    &[("entropy", format!("{:.2}", analysis.entropy).as_str())]
-                )
-                .unwrap()
-            );
-
-            println!(
-                "\n\x1b[1;33m{}\x1b[0m",
-                Lingua::t("commands.check.subtitle_categories", &[]).unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.lowercase",
-                    &[(
-                        "lowercase",
-                        format!(
-                            "{}\x1b[0m",
-                            if analysis.has_lowercase {
-                                "\x1b[1;32m✓"
-                            } else {
-                                "\x1b[1;31m✗"
-                            }
-                        )
-                        .as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.uppercase",
-                    &[(
-                        "uppercase",
-                        format!(
-                            "{}\x1b[0m",
-                            if analysis.has_uppercase {
-                                "\x1b[1;32m✓"
-                            } else {
-                                "\x1b[1;31m✗"
-                            }
-                        )
-                        .as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.digits",
-                    &[(
-                        "digits",
-                        format!(
-                            "{}\x1b[0m",
-                            if analysis.has_digit {
-                                "\x1b[1;32m✓"
-                            } else {
-                                "\x1b[1;31m✗"
-                            }
-                        )
-                        .as_str()
-                    )]
-                )
-                .unwrap()
-            );
-            println!(
-                "  {}",
-                Lingua::t(
-                    "commands.check.special",
-                    &[(
-                        "special",
-                        format!(
-                            "{}\x1b[0m",
-                            if analysis.has_special {
-                                "\x1b[1;32m✓"
-                            } else {
-                                "\x1b[1;31m✗"
-                            }
-                        )
-                        .as_str()
-                    )]
-                )
-                .unwrap()
-            );
-
-            if !analysis.warnings.is_empty() {
-                println!(
-                    "\n\x1b[1;31m{}\x1b[0m",
-                    Lingua::t("commands.check.warnings.title", &[]).unwrap()
-                );
-                for warning in &analysis.warnings {
-                    println!("  ⚠️\t{}", warning);
-                }
-            }
-
-            if !analysis.suggestions.is_empty() && analysis.score.total < 80 {
-                println!(
-                    "\n\x1b[1;33m{}\x1b[0m",
-                    Lingua::t("commands.check.suggestions.title", &[]).unwrap()
-                );
-                for suggestion in &analysis.suggestions {
-                    println!("  💡\t{}", suggestion);
-                }
-            }
-        }
-
-        println!("{}", "=".repeat(50));
     }
 }
 
@@ -581,27 +269,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_calculate_length_score() {
-        assert_eq!(HealthCheck::calculate_length_score(5), 0);
-        assert_eq!(HealthCheck::calculate_length_score(8), 10);
-        assert_eq!(HealthCheck::calculate_length_score(12), 10);
-        assert_eq!(HealthCheck::calculate_length_score(13), 20);
-        assert_eq!(HealthCheck::calculate_length_score(16), 20);
-        assert_eq!(HealthCheck::calculate_length_score(20), 25);
+    fn test_length_score() {
+        assert_eq!(HealthCheck::length_score(5), 0);
+        assert_eq!(HealthCheck::length_score(8), 10);
+        assert_eq!(HealthCheck::length_score(13), 20);
+        assert_eq!(HealthCheck::length_score(20), 25);
     }
 
     #[test]
-    fn test_calculate_diversity_score() {
-        let (score, has_lower, has_upper, has_digit, has_special) =
-            HealthCheck::calculate_diversity_score("Abc123!");
-        assert!(has_lower);
-        assert!(has_upper);
-        assert!(has_digit);
-        assert!(has_special);
-        assert_eq!(score, 30);
+    fn test_length_counts_characters() {
+        assert_eq!(HealthCheck::analyze_password("äöüß").length, 4);
+    }
 
-        let (score2, _, _, _, _) = HealthCheck::calculate_diversity_score("abc");
-        assert_eq!(score2, 5);
+    #[test]
+    fn test_diversity_score() {
+        let all = HealthCheck::character_classes("Abc123!");
+        assert_eq!(HealthCheck::diversity_score(&all), 30);
+        let lower = HealthCheck::character_classes("abc");
+        assert_eq!(HealthCheck::diversity_score(&lower), 5);
     }
 
     #[test]
@@ -613,65 +298,49 @@ mod tests {
     }
 
     #[test]
-    fn test_has_common_patterns() {
-        assert!(HealthCheck::has_common_patterns("password"));
-        assert!(HealthCheck::has_common_patterns("123456"));
-        assert!(!HealthCheck::has_common_patterns("Xy9$mK2@nP7#qW"));
+    fn test_common_match() {
+        assert_eq!(
+            HealthCheck::common_match("Password"),
+            Some(Issue::CommonPassword)
+        );
+        assert_eq!(
+            HealthCheck::common_match("MyPassword!7"),
+            Some(Issue::CommonPattern)
+        );
+        assert_eq!(HealthCheck::common_match("Xy9$mK2@nP7#qW"), None);
     }
 
     #[test]
-    fn test_calculate_entropy_score() {
-        let (score, entropy) = HealthCheck::calculate_entropy_score("Abc123!");
-        assert!(entropy > 0.0);
-        assert!(score > 0);
-
-        let (score2, entropy2) = HealthCheck::calculate_entropy_score("");
-        assert_eq!(score2, 0);
-        assert_eq!(entropy2, 0.0);
-    }
-
-    fn init_lingua_for_tests() {
-        use std::sync::Once;
-        static INIT: Once = Once::new();
-
-        INIT.call_once(|| {
-            if let Ok(languages_path) = crate::config::Config::get_languages_path() {
-                if let Some(path_str) = languages_path.to_str() {
-                    let lingua = Lingua::new(path_str);
-                    let _ = lingua.init();
-                    let _ = Lingua::set_language("en");
-                }
-            }
-        });
+    fn test_common_password_is_weak() {
+        let analysis = HealthCheck::analyze_password("password");
+        assert_eq!(analysis.rating, Rating::Weak);
+        assert!(analysis.issues.contains(&Issue::CommonPassword));
     }
 
     #[test]
-    fn test_score_to_rating() {
-        init_lingua_for_tests();
-
-        let rating = HealthCheck::score_to_rating(30);
-        assert!(!rating.is_empty());
-
-        let rating2 = HealthCheck::score_to_rating(50);
-        assert!(!rating2.is_empty());
-
-        let rating3 = HealthCheck::score_to_rating(70);
-        assert!(!rating3.is_empty());
-
-        let rating4 = HealthCheck::score_to_rating(90);
-        assert!(!rating4.is_empty());
+    fn test_entropy() {
+        let classes = HealthCheck::character_classes("Abc123!");
+        assert!(HealthCheck::entropy(7, &classes) > 0.0);
+        let empty = HealthCheck::character_classes("");
+        assert_eq!(HealthCheck::entropy(0, &empty), 0.0);
+        assert_eq!(HealthCheck::entropy_score(0.0), 0);
     }
 
     #[test]
-    fn test_analyze_password() {
-        init_lingua_for_tests();
+    fn test_rating() {
+        assert_eq!(HealthCheck::rating(30), Rating::Weak);
+        assert_eq!(HealthCheck::rating(50), Rating::Medium);
+        assert_eq!(HealthCheck::rating(70), Rating::Strong);
+        assert_eq!(HealthCheck::rating(90), Rating::VeryStrong);
+    }
 
-        let analysis = HealthCheck::analyze_password("Test123!");
-        assert_eq!(analysis.length, 8);
-        assert!(analysis.has_lowercase);
-        assert!(analysis.has_uppercase);
-        assert!(analysis.has_digit);
-        assert!(analysis.has_special);
-        assert!(analysis.score.total > 0);
+    #[test]
+    fn test_analyze_strong_password() {
+        let analysis = HealthCheck::analyze_password("Xy9$mK2@nP7#qWv4");
+        assert_eq!(analysis.length, 16);
+        assert!(analysis.has_lowercase && analysis.has_uppercase);
+        assert!(analysis.has_digit && analysis.has_special);
+        assert!(analysis.issues.is_empty());
+        assert_eq!(analysis.rating, Rating::VeryStrong);
     }
 }

@@ -1,417 +1,280 @@
 use std::{
     env::consts::{ARCH, OS},
-    fs::{self, File},
-    io::Write,
-    path::PathBuf,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
-use inquire::Confirm;
-use lingua_i18n_rs::prelude::Lingua;
+use ring::digest;
 
 use crate::errors::UpdateError;
+use crate::kd_cli::confirm::Confirm;
+use crate::kd_cli::output::Output;
+use crate::kd_cli::terminal::Terminal;
 use crate::logging::LoggingManager;
+use crate::translation::Translation;
+
+const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/KarnesTH/kdguard/releases/latest";
+const DOWNLOAD_URL: &str = "https://github.com/KarnesTH/kdguard/releases/download";
+const CHECK_INTERVAL_SECONDS: u64 = 24 * 60 * 60;
 
 pub struct UpdateManager;
 
 impl UpdateManager {
-    /// Check for update
-    ///
-    /// # Returns
-    ///
-    /// Returns Ok(()) if successful, otherwise an error
-    pub async fn check_update() -> Result<(), UpdateError> {
-        LoggingManager::info("Checking for updates");
-        let current_version = env!("CARGO_PKG_VERSION");
-        LoggingManager::info(&format!("Current version: {}", current_version));
+    /// Checks GitHub for a newer release at most once a day and only in an interactive terminal.
+    /// A newer release is installed after confirmation. Failures are printed as warnings and never
+    /// stop the program.
+    pub fn check() {
+        if !Terminal::interactive() || !Self::check_due() {
+            return;
+        }
+        Self::record_check();
 
-        let latest_tag = Self::get_latest_tag().await?;
-        let latest_version = Self::extract_version(&latest_tag);
-        LoggingManager::info(&format!("Latest version: {}", latest_version));
-
-        if Self::compare_versions(&latest_version, current_version) > 0 {
-            LoggingManager::info("Update available");
-            let confirm = Confirm::new(&Lingua::t("cli.cli_commands.update.confirm", &[]).unwrap())
-                .with_default(false)
-                .prompt()
-                .map_err(|e| {
-                    let error = format!("Failed to get user confirmation: {}", e);
-                    LoggingManager::error(&error);
-                    UpdateError::GetLatestTag(error)
-                })?;
-            if confirm {
-                LoggingManager::info("User confirmed update, starting update process");
-                Self::update(&latest_tag).await?;
-            } else {
-                LoggingManager::info("Update cancelled by user");
+        let latest = match Self::latest_tag() {
+            Ok(tag) => tag,
+            Err(error) => {
+                LoggingManager::warn(&format!("Update check failed: {error}"));
+                Output::warn(&Translation::get("update.check_failed"), &error.to_string());
+                return;
             }
-        } else {
-            LoggingManager::info("Already on latest version");
+        };
+        let version = latest.trim_start_matches('v');
+        if Self::compare_versions(version, env!("CARGO_PKG_VERSION")) <= 0 {
+            return;
         }
 
-        Ok(())
+        let question = Translation::with("update.confirm", &[("version", version)]);
+        if !Confirm::new(&question, false).ask().unwrap_or(false) {
+            return;
+        }
+        match Self::install(&latest) {
+            Ok(()) => Output::success(
+                &Translation::with("update.done", &[("version", version)]),
+                &Translation::get("update.restart"),
+            ),
+            Err(error) => {
+                LoggingManager::error(&format!("Update failed: {error}"));
+                Output::error(&Translation::get("update.failed"), &error.to_string());
+            }
+        }
     }
 
-    /// Get the latest tag from GitHub
-    ///
-    /// # Returns
-    ///
-    /// Returns the latest tag if successful, otherwise an error
-    async fn get_latest_tag() -> Result<String, UpdateError> {
-        LoggingManager::info("Fetching latest tag from GitHub API");
+    /// Returns `<data path>/update_check`.
+    fn state_file() -> Option<PathBuf> {
+        LoggingManager::data_path().map(|dir| dir.join("update_check"))
+    }
 
-        let client = reqwest::Client::builder()
-            .user_agent("kdguard-update-checker")
-            .build()
-            .map_err(|e| {
-                let error = format!("Failed to create HTTP client: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::GetLatestTag(error)
-            })?;
+    fn now() -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |duration| duration.as_secs())
+    }
 
-        let res = client
-            .get("https://api.github.com/repos/KarnesTH/kdguard/releases/latest")
-            .send()
-            .await
-            .map_err(|e| {
-                let error = format!("Failed to send request to GitHub API: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::GetLatestTag(error)
-            })?;
+    /// True when the last recorded check is older than a day or missing.
+    fn check_due() -> bool {
+        let last = Self::state_file()
+            .and_then(|path| fs::read_to_string(path).ok())
+            .and_then(|content| content.trim().parse::<u64>().ok())
+            .unwrap_or(0);
+        Self::now().saturating_sub(last) >= CHECK_INTERVAL_SECONDS
+    }
 
-        let status = res.status();
-        let text = res.text().await.map_err(|e| {
-            let error = format!("Failed to read response body: {}", e);
-            LoggingManager::error(&error);
-            UpdateError::GetLatestTag(error)
-        })?;
-
-        if !status.is_success() {
-            let error = format!("GitHub API returned status {}: {}", status, text);
-            LoggingManager::error(&error);
-            return Err(UpdateError::GitHubApi(error));
+    fn record_check() {
+        if let Some(path) = Self::state_file() {
+            if let Some(dir) = path.parent() {
+                let _ = fs::create_dir_all(dir);
+            }
+            let _ = fs::write(path, Self::now().to_string());
         }
+    }
 
-        let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
-            let error = format!("Failed to parse JSON response: {}. Response: {}", e, text);
-            LoggingManager::error(&error);
-            UpdateError::ParseJson(error)
-        })?;
-
-        if let Some(tag_value) = json.get("tag_name") {
-            LoggingManager::info(&format!("Raw tag_name from API: {:?}", tag_value));
+    /// Runs `curl` over HTTPS only and returns stdout.
+    fn curl(args: &[&str]) -> Result<Vec<u8>, UpdateError> {
+        let output = Command::new("curl")
+            .args([
+                "-fsSL",
+                "--proto",
+                "=https",
+                "--tlsv1.2",
+                "-A",
+                "kdguard-updater",
+            ])
+            .args(args)
+            .output()
+            .map_err(|e| UpdateError::Curl(e.to_string()))?;
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(UpdateError::Curl(message));
         }
+        Ok(output.stdout)
+    }
 
-        let latest_tag = json
+    /// Reads `tag_name` of the latest release. Tags with characters other than letters, digits,
+    /// `.` and `-` are rejected.
+    fn latest_tag() -> Result<String, UpdateError> {
+        let body = Self::curl(&[
+            "--max-time",
+            "10",
+            "-H",
+            "Accept: application/vnd.github+json",
+            LATEST_RELEASE_URL,
+        ])?;
+        let json: serde_json::Value =
+            serde_json::from_slice(&body).map_err(|_| UpdateError::InvalidResponse)?;
+        let tag = json
             .get("tag_name")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                LoggingManager::error("Failed to parse tag_name from GitHub API response");
-                UpdateError::ParseTagName
-            })?
-            .trim()
-            .to_string();
-
-        if latest_tag.contains("Full Changelog")
-            || latest_tag.contains("http")
-            || latest_tag.contains("compare")
+            .and_then(|value| value.as_str())
+            .ok_or(UpdateError::InvalidResponse)?;
+        if tag.is_empty()
+            || !tag
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
         {
-            let error = format!("Invalid tag format received: {}", latest_tag);
-            LoggingManager::error(&error);
-            return Err(UpdateError::ParseTagName);
+            return Err(UpdateError::InvalidResponse);
         }
-
-        LoggingManager::info(&format!("Successfully fetched latest tag: {}", latest_tag));
-        Ok(latest_tag)
+        Ok(tag.to_string())
     }
 
-    /// Extract the version from the tag
-    ///
-    /// # Returns
-    ///
-    /// Returns the version if successful, otherwise an error
-    fn extract_version(tag: &str) -> String {
-        tag.strip_prefix('v').unwrap_or(tag).to_string()
-    }
-
-    /// Compare two versions
-    ///
-    /// # Returns
-    ///
-    /// Returns 1 if v1 is greater than v2, -1 if v1 is less than v2, and 0 if they are equal
+    /// Returns 1 if `v1` is newer than `v2`, -1 if older and 0 if equal, comparing the dot
+    /// separated numbers from left to right.
     fn compare_versions(v1: &str, v2: &str) -> i32 {
-        let v1_parts: Vec<u32> = v1.split('.').map(|s| s.parse().unwrap_or(0)).collect();
-        let v2_parts: Vec<u32> = v2.split('.').map(|s| s.parse().unwrap_or(0)).collect();
-
-        let max_len = v1_parts.len().max(v2_parts.len());
-        for i in 0..max_len {
-            let v1_part = v1_parts.get(i).copied().unwrap_or(0);
-            let v2_part = v2_parts.get(i).copied().unwrap_or(0);
-
-            if v1_part > v2_part {
-                return 1;
-            } else if v1_part < v2_part {
-                return -1;
+        let parse = |version: &str| -> Vec<u32> {
+            version
+                .split('.')
+                .map(|part| part.parse().unwrap_or(0))
+                .collect()
+        };
+        let (a, b) = (parse(v1), parse(v2));
+        for i in 0..a.len().max(b.len()) {
+            let (x, y) = (
+                a.get(i).copied().unwrap_or(0),
+                b.get(i).copied().unwrap_or(0),
+            );
+            if x != y {
+                return if x > y { 1 } else { -1 };
             }
         }
-
         0
     }
 
-    /// Detect the platform for the binary download
-    ///
-    /// # Returns
-    ///
-    /// Returns the platform if successful, otherwise an error
-    fn detect_platform() -> Result<String, UpdateError> {
-        let os = match OS {
-            "linux" => "linux",
-            "macos" | "darwin" => "macos",
-            "windows" => "windows",
-            _ => {
-                let error = format!("Unsupported OS: {}", OS);
-                LoggingManager::error(&error);
-                return Err(UpdateError::Update(error));
-            }
-        };
-
-        let arch = match ARCH {
-            "x86_64" | "amd64" => "x86_64",
-            "aarch64" | "arm64" => {
-                if os == "macos" {
-                    "aarch64"
-                } else {
-                    let error = format!("Unsupported architecture for {}: {}", os, ARCH);
-                    LoggingManager::error(&error);
-                    return Err(UpdateError::Update(error));
-                }
-            }
-            _ => {
-                let error = format!("Unsupported architecture: {}", ARCH);
-                LoggingManager::error(&error);
-                return Err(UpdateError::Update(error));
-            }
-        };
-
-        let platform = if os == "macos" && arch == "aarch64" {
-            "macos-aarch64"
-        } else if os == "macos" && arch == "x86_64" {
-            "macos-x86_64"
-        } else if os == "linux" && arch == "x86_64" {
-            "linux-x86_64"
-        } else if os == "windows" && arch == "x86_64" {
-            "windows-x86_64"
-        } else {
-            let error = format!("Unsupported platform combination: {}-{}", os, arch);
-            LoggingManager::error(&error);
-            return Err(UpdateError::Update(error));
-        };
-
-        Ok(platform.to_string())
-    }
-
-    /// Get the install directory path
-    ///
-    /// # Returns
-    ///
-    /// Returns the install directory path if successful, otherwise an error
-    fn get_install_dir() -> Result<PathBuf, UpdateError> {
-        if OS == "Windows" {
-            let local_app_data = dirs::data_local_dir().ok_or_else(|| {
-                let error = "Failed to get LocalAppData directory".to_string();
-                LoggingManager::error(&error);
-                UpdateError::Update(error)
-            })?;
-            Ok(local_app_data.join("Karnes Development").join("kdguard"))
-        } else {
-            let home = dirs::home_dir().ok_or_else(|| {
-                let error = "Failed to get home directory".to_string();
-                LoggingManager::error(&error);
-                UpdateError::Update(error)
-            })?;
-            Ok(home.join(".local").join("bin"))
+    /// Returns the platform part of the release file name.
+    fn platform() -> Result<&'static str, UpdateError> {
+        match (OS, ARCH) {
+            ("linux", "x86_64") => Ok("linux-x86_64"),
+            ("macos", "x86_64") => Ok("macos-x86_64"),
+            ("macos", "aarch64") => Ok("macos-aarch64"),
+            ("windows", "x86_64") => Ok("windows-x86_64"),
+            _ => Err(UpdateError::UnsupportedPlatform(format!("{OS}-{ARCH}"))),
         }
     }
 
-    /// Update kdguard by downloading and installing the binary directly
-    ///
-    /// # Arguments
-    ///
-    /// * `tag` - The tag version to install
-    ///
-    /// # Returns
-    ///
-    /// Returns Ok(()) if successful, otherwise an error
-    async fn update(tag: &str) -> Result<(), UpdateError> {
-        LoggingManager::info(&format!("Starting update process for tag: {}", tag));
+    /// Downloads the release binary next to the running executable, checks it against the
+    /// published `.sha256` file and replaces the executable with it. On Windows a `kdg.exe` that is a
+    /// copy instead of a symlink is replaced as well.
+    fn install(tag: &str) -> Result<(), UpdateError> {
+        let platform = Self::platform()?;
+        let version = tag.trim_start_matches('v');
+        let extension = if cfg!(windows) { ".exe" } else { "" };
+        let asset = format!("kdguard_{version}-{platform}{extension}");
+        let url = format!("{DOWNLOAD_URL}/{tag}/{asset}");
 
-        let platform = Self::detect_platform()?;
-        let version = Self::extract_version(tag);
-        let install_dir = Self::get_install_dir()?;
+        let executable = std::env::current_exe()
+            .and_then(fs::canonicalize)
+            .map_err(|e| UpdateError::Install(e.to_string()))?;
+        let dir = executable
+            .parent()
+            .ok_or_else(|| UpdateError::Install(executable.display().to_string()))?;
+        let file_name = executable
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .ok_or_else(|| UpdateError::Install(executable.display().to_string()))?;
+        let new_path = dir.join(format!("{file_name}.new"));
+        let old_path = dir.join(format!("{file_name}.old"));
 
-        LoggingManager::info(&format!("Platform: {}, Version: {}", platform, version));
-        LoggingManager::info(&format!("Install directory: {}", install_dir.display()));
-
-        fs::create_dir_all(&install_dir).map_err(|e| {
-            let error = format!("Failed to create install directory: {}", e);
-            LoggingManager::error(&error);
-            UpdateError::Update(error)
-        })?;
-
-        let binary_name = if OS == "Windows" {
-            format!("kdguard_{}-{}.exe", version, platform)
-        } else {
-            format!("kdguard_{}-{}", version, platform)
-        };
-        let download_url = format!(
-            "https://github.com/KarnesTH/kdguard/releases/download/{}/{}",
-            tag, binary_name
+        Output::info(
+            &Translation::with("update.downloading", &[("version", version)]),
+            "",
         );
+        LoggingManager::info(&format!("Downloading {url}"));
+        let new_path_text = new_path.to_string_lossy().into_owned();
+        Self::curl(&["--max-time", "300", "-o", &new_path_text, &url])?;
 
-        LoggingManager::info(&format!("Downloading from: {}", download_url));
-
-        let client = reqwest::Client::builder()
-            .user_agent("kdguard-update-checker")
-            .build()
-            .map_err(|e| {
-                let error = format!("Failed to create HTTP client: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::GetLatestTag(error)
-            })?;
-
-        let response = client.get(&download_url).send().await.map_err(|e| {
-            let error = format!("Failed to download binary: {}", e);
-            LoggingManager::error(&error);
-            UpdateError::Update(error)
-        })?;
-
-        if !response.status().is_success() {
-            let error = format!("Failed to download binary: HTTP {}", response.status());
-            LoggingManager::error(&error);
-            return Err(UpdateError::Update(error));
+        if let Err(error) = Self::verify(&new_path, &format!("{url}.sha256")) {
+            let _ = fs::remove_file(&new_path);
+            return Err(error);
         }
-
-        let binary_data = response.bytes().await.map_err(|e| {
-            let error = format!("Failed to read binary data: {}", e);
-            LoggingManager::error(&error);
-            UpdateError::Update(error)
-        })?;
-
-        let binary_name_final = if OS == "Windows" {
-            "kdguard.exe"
-        } else {
-            "kdguard"
-        };
-        let binary_path = install_dir.join(binary_name_final);
-        let temp_binary_path = install_dir.join(format!("{}.new", binary_name_final));
-        let old_binary_path = install_dir.join(format!("{}.old", binary_name_final));
-
-        LoggingManager::info(&format!("Installing binary to: {}", binary_path.display()));
-
-        let mut file = File::create(&temp_binary_path).map_err(|e| {
-            let error = format!("Failed to create temporary binary file: {}", e);
-            LoggingManager::error(&error);
-            UpdateError::Update(error)
-        })?;
-
-        file.write_all(&binary_data).map_err(|e| {
-            let error = format!("Failed to write binary data: {}", e);
-            LoggingManager::error(&error);
-            UpdateError::Update(error)
-        })?;
-        drop(file);
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = fs::metadata(&temp_binary_path)
-                .map_err(|e| {
-                    let error = format!("Failed to get file metadata: {}", e);
-                    LoggingManager::error(&error);
-                    UpdateError::Update(error)
-                })?
-                .permissions();
-            perms.set_mode(0o755);
-            fs::set_permissions(&temp_binary_path, perms).map_err(|e| {
-                let error = format!("Failed to set file permissions: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::Update(error)
-            })?;
+            fs::set_permissions(&new_path, fs::Permissions::from_mode(0o755))
+                .map_err(|e| UpdateError::Install(e.to_string()))?;
         }
 
-        if binary_path.exists() {
-            if old_binary_path.exists() {
-                fs::remove_file(&old_binary_path)
-                    .map_err(|e| {
-                        let error = format!("Failed to remove old backup: {}", e);
-                        LoggingManager::warn(&error);
-                    })
-                    .ok();
-            }
-            fs::rename(&binary_path, &old_binary_path).map_err(|e| {
-                let error = format!("Failed to rename old binary: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::Update(error)
-            })?;
+        let _ = fs::remove_file(&old_path);
+        fs::rename(&executable, &old_path).map_err(|e| UpdateError::Install(e.to_string()))?;
+        if let Err(error) = fs::rename(&new_path, &executable) {
+            let _ = fs::rename(&old_path, &executable);
+            return Err(UpdateError::Install(error.to_string()));
         }
-
-        fs::rename(&temp_binary_path, &binary_path).map_err(|e| {
-            let error = format!("Failed to rename new binary: {}", e);
-            LoggingManager::error(&error);
-            if old_binary_path.exists() {
-                fs::rename(&old_binary_path, &binary_path).ok();
-            }
-            UpdateError::Update(error)
-        })?;
-
-        if old_binary_path.exists() {
-            fs::remove_file(&old_binary_path)
-                .map_err(|e| {
-                    let error = format!("Failed to remove old backup: {}", e);
-                    LoggingManager::warn(&error);
-                })
-                .ok();
-        }
-
-        let alias_name = if OS == "Windows" { "kdg.exe" } else { "kdg" };
-        let alias_path = install_dir.join(alias_name);
-
-        if alias_path.exists() {
-            fs::remove_file(&alias_path)
-                .map_err(|e| {
-                    let error = format!("Failed to remove existing alias: {}", e);
-                    LoggingManager::warn(&error);
-                })
-                .ok();
-        }
+        let _ = fs::remove_file(&old_path);
 
         #[cfg(windows)]
         {
-            use std::os::windows::fs::symlink_file;
-            if symlink_file(&binary_path, &alias_path).is_err() {
-                fs::copy(&binary_path, &alias_path).map_err(|e| {
-                    let error = format!("Failed to create alias: {}", e);
-                    LoggingManager::error(&error);
-                    UpdateError::Update(error)
-                })?;
+            let alias = dir.join("kdg.exe");
+            let is_copy =
+                fs::symlink_metadata(&alias).is_ok_and(|meta| !meta.file_type().is_symlink());
+            if is_copy {
+                fs::copy(&executable, &alias).map_err(|e| UpdateError::Install(e.to_string()))?;
             }
         }
 
-        #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(&binary_path, &alias_path).map_err(|e| {
-                let error = format!("Failed to create symlink: {}", e);
-                LoggingManager::error(&error);
-                UpdateError::Update(error)
-            })?;
-        }
-
-        LoggingManager::info("Update process completed successfully");
-        LoggingManager::info(&format!(
-            "Binary installed to: {}\nAlias created at: {}",
-            binary_path.display(),
-            alias_path.display()
-        ));
-
+        LoggingManager::info(&format!("Updated to {tag}"));
         Ok(())
+    }
+
+    /// Compares the SHA-256 of the file with the first word of the checksum file at `url`.
+    fn verify(path: &Path, url: &str) -> Result<(), UpdateError> {
+        let checksum =
+            Self::curl(&["--max-time", "30", url]).map_err(|_| UpdateError::ChecksumMissing)?;
+        let expected = String::from_utf8_lossy(&checksum)
+            .split_whitespace()
+            .next()
+            .map(str::to_lowercase)
+            .filter(|hash| hash.len() == 64 && hash.chars().all(|c| c.is_ascii_hexdigit()))
+            .ok_or(UpdateError::ChecksumMissing)?;
+
+        let content = fs::read(path).map_err(|e| UpdateError::Install(e.to_string()))?;
+        let actual: String = digest::digest(&digest::SHA256, &content)
+            .as_ref()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        if actual != expected {
+            return Err(UpdateError::ChecksumMismatch);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compare_versions() {
+        assert_eq!(UpdateManager::compare_versions("0.7.0", "0.6.5"), 1);
+        assert_eq!(UpdateManager::compare_versions("0.6.5", "0.7.0"), -1);
+        assert_eq!(UpdateManager::compare_versions("0.7.0", "0.7.0"), 0);
+        assert_eq!(UpdateManager::compare_versions("1.0", "0.9.9"), 1);
+        assert_eq!(UpdateManager::compare_versions("0.10.0", "0.9.0"), 1);
+    }
+
+    #[test]
+    fn test_platform_is_known_on_ci() {
+        if OS == "linux" && ARCH == "x86_64" {
+            assert_eq!(UpdateManager::platform().unwrap(), "linux-x86_64");
+        }
     }
 }

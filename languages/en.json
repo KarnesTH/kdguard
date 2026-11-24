@@ -1,103 +1,242 @@
 {
     "cli": {
-        "about": "A CLI tool to generate secure and random passwords",
+        "about": "Generate and check secure passwords. Without options the interactive mode starts.",
         "args": {
-            "length_help": "Length of the password",
-            "count_help": "Number of passwords to generate",
-            "save_help": "Save passwords to a file",
-            "output_help": "Name of the file to save the passwords (e.g. kdguard.txt)",
-            "pattern_help": "Pattern: U=Uppercase letters, L=Lowercase letters, D=Digits, S=Special characters",
-            "mode_help": "Mode: random, pattern, phrase or deterministic",
-            "phrase_help": "Number of words in the phrase",
-            "seed_env_help": "Environment variable name containing the seed for deterministic password generation",
-            "service_help": "Service name to use as salt for deterministic password generation",
-            "salt_help": "Custom salt for deterministic password generation (combined with service if provided)"
+            "mode_help": "Mode, default from the config",
+            "length_help": "Password length, 8 to 64",
+            "count_help": "Number of passwords, 1 to 100",
+            "save_help": "Save the passwords to a file",
+            "no_save_help": "Do not save, even when auto save is on",
+            "output_help": "File to save to (default: kdguard.txt)",
+            "pattern_help": "Pattern: U uppercase, L lowercase, D digit, S special character",
+            "words_help": "Number of words of a passphrase, 3 to 20",
+            "seed_env_help": "Name of the environment variable holding the master seed (otherwise hidden prompt)",
+            "service_help": "Service the deterministic password is derived for",
+            "salt_help": "Additional salt for deterministic passwords"
         },
-        "cli_commands": {
-            "check_password": {
-                "about": "Password Check",
-                "password_help": "The password to check. Use '' for passwords with special characters like '$', '!', '(', ')'",
-                "detailed_help": "Show detailed analysis"
+        "commands": {
+            "check": {
+                "about": "Check a password (hidden prompt without argument, '-' reads stdin)",
+                "password_help": "Password to check. Better leave it out, otherwise it ends up in the shell history",
+                "detailed_help": "Show the points per category"
             },
-            "manage_config": {
-                "about": "Configuration Management",
-                "show_about": "Show current configuration",
-                "edit_about": "Edit configuration",
-                "edit_language_help": "Language of the configuration",
-                "edit_default_length_help": "Default length of the passwords",
-                "edit_default_count_help": "Default count of the passwords",
-                "edit_auto_save_help": "Auto save of the passwords"
+            "config": {
+                "about": "Show and edit the configuration",
+                "show_about": "Show the current configuration",
+                "edit_about": "Edit the configuration (interactive without options)",
+                "mode_help": "Default mode",
+                "length_help": "Default length, 8 to 64",
+                "count_help": "Default count, 1 to 100",
+                "auto_save_help": "Save passwords automatically",
+                "language_help": "Language: de or en"
             },
             "uninstall": {
-                "about": "Uninstall kdguard",
-                "confirm": "Do you really want to uninstall kdguard?",
-                "cancelled": "Uninstall cancelled",
-                "success": "kdguard has been successfully uninstalled!"
-            },
-            "update": {
-                "confirm": "A new version of kdguard is available. Do you want to update kdguard?"
+                "about": "Uninstall kdguard"
             }
         }
     },
-    "commands": {
-        "generate": {
-            "title": "Password Generation"
+    "generate": {
+        "subtitle": "v{{version}} · Secure passwords",
+        "modes": {
+            "random": "Random characters",
+            "pattern": "Your own pattern",
+            "phrase": "Passphrase of words",
+            "deterministic": "Derived from master seed and service"
         },
-        "check": {
-            "title": "Password Health Check",
-            "subtitle_detailed": "Detailed Analysis",
-            "subtitle_categories": "Character Categories",
-            "score_rating": {
-                "weak": "Weak",
-                "medium": "Medium",
-                "strong": "Strong",
-                "very_strong": "Very Strong"
+        "ask": {
+            "mode": "Mode",
+            "length": "Length",
+            "pattern": "Pattern (U L D S)",
+            "words": "Words",
+            "seed": "Master seed",
+            "service": "Service",
+            "count": "Count",
+            "save": "Save to a file?",
+            "file": "File",
+            "overwrite": "{{path}} already exists. Overwrite?"
+        },
+        "seed_weak": "The master seed is weak",
+        "seed_weak_hint": "every derived password is only as safe as the seed",
+        "detail": {
+            "length": "{{length}} characters",
+            "words": "{{words}} words",
+            "no_service": "no service"
+        },
+        "title_one": "Password",
+        "title_many": "Passwords",
+        "generated_one": "1 password generated",
+        "generated_many": "{{count}} passwords generated",
+        "saved": "Saved",
+        "not_saved": "Not saved"
+    },
+    "check": {
+        "title": "Password check",
+        "score_title": "Points",
+        "ask": {
+            "password": "Password"
+        },
+        "history_warning": "The password is now in your shell history",
+        "history_hint": "use kdg check without argument",
+        "rating": {
+            "weak": "Weak",
+            "medium": "Medium",
+            "strong": "Strong",
+            "very_strong": "Very strong"
+        },
+        "label": {
+            "length": "Length",
+            "entropy": "Entropy",
+            "classes": "Characters",
+            "diversity": "Diversity",
+            "complexity": "Complexity"
+        },
+        "value": {
+            "length": "{{length}} characters",
+            "entropy": "{{entropy}} bit"
+        },
+        "no_issues": "No weaknesses found",
+        "issues": {
+            "too_short": {
+                "warning": "Too short",
+                "suggestion": "use at least 12 characters"
             },
-            "rating": "Rating: {{rating}} ({{points}} points)",
-            "length": "Length: {{length}} characters",
-            "length_score": "Length Score: {{length_score}} / 25",
-            "diversity_score": "Diversity Score: {{diversity_score}} / 30",
-            "complexity_score": "Complexity Score: {{complexity_score}} / 25",
-            "entropy_score": "Entropy Score: {{entropy_score}} / 20",
-            "entropy": "Entropy: {{entropy}} Bits",
-            "warnings": {
-                "title": "Warnings",
-                "password_too_short": "Password is too short",
-                "no_lowercase": "No lowercase letters present",
-                "no_uppercase": "No uppercase letters present",
-                "no_digits": "No digits present",
-                "no_special": "No special characters present",
-                "common_patterns": "Common patterns detected",
-                "repetitions": "Repetitions detected"
+            "no_lowercase": {
+                "warning": "No lowercase letters",
+                "suggestion": "add lowercase letters"
             },
-            "suggestions": {
-                "title": "Suggestions",
-                "password_to_short": "Use at least 8 characters",
-                "add_lowercase": "Add lowercase letters",
-                "add_uppercase": "Add uppercase letters",
-                "add_digits": "Add digits",
-                "add_special": "Add special characters",
-                "avoid_simple_sequences": "Avoid simple sequences like '123' or 'abc'",
-                "avoid_repetitions": "Avoid repetitions"
+            "no_uppercase": {
+                "warning": "No uppercase letters",
+                "suggestion": "add uppercase letters"
             },
-            "lowercase": "Lowercase {{lowercase}}",
-            "uppercase": "Uppercase {{uppercase}}",
-            "digits": "Digits {{digits}}",
-            "special": "Special {{special}}"
+            "no_digits": {
+                "warning": "No digits",
+                "suggestion": "add digits"
+            },
+            "no_special": {
+                "warning": "No special characters",
+                "suggestion": "a special character makes it much stronger"
+            },
+            "common_password": {
+                "warning": "Known password",
+                "suggestion": "it is on the list of the most common passwords, do not use it"
+            },
+            "common_pattern": {
+                "warning": "Contains a common password",
+                "suggestion": "avoid known words and number sequences"
+            },
+            "repetitions": {
+                "warning": "Repeated characters",
+                "suggestion": "avoid three identical characters in a row"
+            }
         }
     },
     "config": {
-        "show": {
-            "title": "Current Configuration",
-            "subtitle_general": "General Settings",
-            "subtitle_language": "Language Settings",
-            "default_length": "Default Length: {{default_length}}",
-            "default_count": "Default Count: {{default_count}}",
-            "auto_save": "Auto Save: {{auto_save}}",
-            "language": "Language: {{language}}"
+        "title": "Configuration",
+        "label": {
+            "mode": "Mode",
+            "length": "Length",
+            "count": "Count",
+            "auto_save": "Save automatically",
+            "language": "Language"
         },
-        "edit": {
-            "success": "Configuration successfully updated"
+        "yes": "yes",
+        "no": "no",
+        "saved": "Configuration saved"
+    },
+    "update": {
+        "check_failed": "Update check failed",
+        "confirm": "Version {{version}} is available. Update now?",
+        "downloading": "Downloading version {{version}}",
+        "done": "Updated to version {{version}}",
+        "restart": "active from the next start",
+        "failed": "Update failed"
+    },
+    "uninstall": {
+        "confirm": "Really uninstall kdguard including configuration and logs?",
+        "cancelled": "Uninstall canceled",
+        "removed": "Removed",
+        "done": "kdguard uninstalled"
+    },
+    "help": {
+        "help": "Show help",
+        "version": "Show version",
+        "options": "options",
+        "command": "command",
+        "hint": "kdg -h shows all commands and options",
+        "values": {
+            "mode": "mode",
+            "length": "length",
+            "count": "count",
+            "output": "file",
+            "pattern": "pattern",
+            "words": "words",
+            "seed_env": "variable",
+            "service": "service",
+            "salt": "salt",
+            "password": "password",
+            "password_length": "length",
+            "auto_save": "value",
+            "lang": "language"
+        }
+    },
+    "errors": {
+        "title": "Error",
+        "arguments": "Invalid arguments",
+        "config": {
+            "load": "Could not load the configuration",
+            "no_directory": "No config directory found",
+            "read": "Could not read {{path}}",
+            "parse": "{{path}} is invalid",
+            "write": "Could not write {{path}}",
+            "serialize": "Could not create the configuration",
+            "invalid_length": "Length {{value}} is invalid, allowed are 8 to 64",
+            "invalid_count": "Count {{value}} is invalid, allowed are 1 to 100",
+            "invalid_language": "Language {{value}} is not supported, allowed are de and en"
+        },
+        "logging": {
+            "disabled": "Logging is disabled",
+            "no_directory": "No data directory found",
+            "create_directory": "Could not create the log directory",
+            "create_file": "Could not create the log file",
+            "initialize": "Could not start the logger"
+        },
+        "generator": {
+            "invalid_length": "Length {{value}} is invalid, allowed are 8 to 64",
+            "invalid_count": "Count {{value}} is invalid, allowed are 1 to 100",
+            "empty_pattern": "A pattern is required, e.g. ULLDDS",
+            "invalid_pattern_character": "{{value}} is not allowed in a pattern, only U, L, D and S",
+            "invalid_word_count": "{{value}} words are invalid, allowed are 3 to 20",
+            "empty_seed": "The master seed must not be empty",
+            "max_retries": "No valid password generated, please try again",
+            "random_bytes": "Could not generate random numbers",
+            "key_derivation": "Key derivation failed",
+            "file_exists": "{{path}} already exists",
+            "save_file": "Could not save {{path}}"
+        },
+        "command": {
+            "seed_missing": "No master seed given, use --seed-env <VARIABLE>",
+            "seed_env_empty": "Environment variable {{name}} is empty or not set",
+            "read_stdin": "Could not read the input",
+            "empty_password": "No password given"
+        },
+        "uninstall": {
+            "executable": "Could not determine the program path",
+            "remove": "Could not remove {{path}}"
+        },
+        "update": {
+            "curl": "curl failed",
+            "invalid_response": "Invalid response from GitHub",
+            "unsupported_platform": "There is no release for {{value}}",
+            "checksum_missing": "No checksum found for the release, update canceled",
+            "checksum_mismatch": "Checksum does not match, update canceled",
+            "install": "Installation failed"
+        },
+        "argument": {
+            "unknown": "Unknown option {{arg}}",
+            "unknown_command": "Unknown command {{command}}",
+            "invalid_value": "Invalid value '{{value}}' for {{arg}}",
+            "conflict": "{{arg}} cannot be combined with {{other}}",
+            "missing_command": "Command missing"
         }
     }
 }

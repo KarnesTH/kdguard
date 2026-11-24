@@ -1,24 +1,23 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand, ValueEnum};
-use lazy_static::lazy_static;
-use lingua_i18n_rs::prelude::Lingua;
+use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
+use crate::translation::Translation;
 
-mod config;
-mod password;
-pub mod tui;
-mod uninstall;
-mod update;
+pub mod commands;
+pub mod config;
+pub mod errors;
+#[rustfmt::skip]
+pub mod kd_cli;
+pub mod logging;
+pub mod password;
+pub mod translation;
+pub mod uninstall;
+pub mod update;
 
-mod errors;
-mod logging;
-
-lazy_static! {
-    pub static ref CONFIG: Config = Config::load_config().unwrap();
-    static ref DEFAULT_MODE_STR: String = CONFIG.general.default_mode.clone();
-}
-
-#[derive(ValueEnum, Clone, PartialEq)]
+#[derive(ValueEnum, Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum PasswordMode {
     Random,
     Pattern,
@@ -26,100 +25,91 @@ pub enum PasswordMode {
     Deterministic,
 }
 
-pub fn parse_password_mode(s: &str) -> Result<PasswordMode, String> {
-    match s.to_lowercase().as_str() {
-        "random" => Ok(PasswordMode::Random),
-        "pattern" => Ok(PasswordMode::Pattern),
-        "phrase" => Ok(PasswordMode::Phrase),
-        "deterministic" => Ok(PasswordMode::Deterministic),
-        _ => Err(format!("Invalid password mode: {}", s)),
-    }
-}
+impl PasswordMode {
+    pub const ALL: [PasswordMode; 4] = [
+        PasswordMode::Random,
+        PasswordMode::Pattern,
+        PasswordMode::Phrase,
+        PasswordMode::Deterministic,
+    ];
 
-fn get_default_mode() -> &'static str {
-    &DEFAULT_MODE_STR
+    /// Returns the lowercase name used in the config file and on the command line.
+    pub fn name(&self) -> &'static str {
+        match self {
+            PasswordMode::Random => "random",
+            PasswordMode::Pattern => "pattern",
+            PasswordMode::Phrase => "phrase",
+            PasswordMode::Deterministic => "deterministic",
+        }
+    }
 }
 
 #[derive(Parser)]
 #[command(
     version,
-    about = Lingua::t("cli.about", &[]).unwrap(),
+    about = Translation::get("cli.about"),
     author = "KarnesTH <p_haehnel@hotmail.de>"
 )]
 pub struct Cli {
-    #[clap(subcommand)]
-    pub commands: Option<Commands>,
-    #[clap(short, long, help = Lingua::t("cli.args.mode_help", &[]).unwrap(), value_parser = parse_password_mode, default_value = get_default_mode())]
-    pub mode: PasswordMode,
-    #[clap(short, long, help = Lingua::t("cli.args.length_help", &[]).unwrap(), default_value_t = CONFIG.general.default_length)]
-    pub length: usize,
-    #[clap(short, long, help = Lingua::t("cli.args.count_help", &[]).unwrap(), default_value_t = CONFIG.general.default_count)]
-    pub count: usize,
-    #[clap(
-        short,
-        long,
-        help = Lingua::t("cli.args.save_help", &[]).unwrap(),
-        default_value_t = CONFIG.general.auto_save
-    )]
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+    #[arg(short, long, value_enum, help = Translation::get("cli.args.mode_help"))]
+    pub mode: Option<PasswordMode>,
+    #[arg(short, long, help = Translation::get("cli.args.length_help"))]
+    pub length: Option<usize>,
+    #[arg(short, long, help = Translation::get("cli.args.count_help"))]
+    pub count: Option<usize>,
+    #[arg(short, long, conflicts_with = "no_save", help = Translation::get("cli.args.save_help"))]
     pub save: bool,
-    #[clap(short, long, help = Lingua::t("cli.args.output_help", &[]).unwrap())]
-    pub output: Option<String>,
-    #[clap(short, long, help = Lingua::t("cli.args.pattern_help", &[]).unwrap())]
+    #[arg(long, help = Translation::get("cli.args.no_save_help"))]
+    pub no_save: bool,
+    #[arg(short, long, help = Translation::get("cli.args.output_help"))]
+    pub output: Option<PathBuf>,
+    #[arg(short, long, help = Translation::get("cli.args.pattern_help"))]
     pub pattern: Option<String>,
-    #[clap(short, long, help = Lingua::t("cli.args.phrase_help", &[]).unwrap())]
+    #[arg(short, long, help = Translation::get("cli.args.words_help"))]
     pub words: Option<usize>,
-    #[clap(long, help = Lingua::t("cli.args.seed_env_help", &[]).unwrap())]
+    #[arg(long, help = Translation::get("cli.args.seed_env_help"))]
     pub seed_env: Option<String>,
-    #[clap(long, help = Lingua::t("cli.args.service_help", &[]).unwrap())]
+    #[arg(long, help = Translation::get("cli.args.service_help"))]
     pub service: Option<String>,
-    #[clap(long, help = Lingua::t("cli.args.salt_help", &[]).unwrap())]
+    #[arg(long, help = Translation::get("cli.args.salt_help"))]
     pub salt: Option<String>,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = Lingua::t("cli.cli_commands.check_password.about", &[]).unwrap())]
+    #[command(about = Translation::get("cli.commands.check.about"))]
     Check {
-        #[clap(
-            help = Lingua::t("cli.cli_commands.check_password.password_help", &[]).unwrap()
-        )]
-        password: String,
-        #[clap(short, long, help = Lingua::t("cli.cli_commands.check_password.detailed_help", &[]).unwrap(), default_value_t = false)]
+        #[arg(help = Translation::get("cli.commands.check.password_help"))]
+        password: Option<String>,
+        #[arg(short, long, help = Translation::get("cli.commands.check.detailed_help"))]
         detailed: bool,
     },
-    #[command(about = Lingua::t("cli.cli_commands.manage_config.about", &[]).unwrap())]
+    #[command(about = Translation::get("cli.commands.config.about"))]
     Config {
-        #[clap(subcommand)]
-        commands: ConfigCommands,
+        #[command(subcommand)]
+        command: ConfigCommands,
     },
-    #[command(about = Lingua::t("cli.cli_commands.uninstall.about", &[]).unwrap())]
+    #[command(about = Translation::get("cli.commands.uninstall.about"))]
     Uninstall,
 }
 
 #[derive(Subcommand)]
 pub enum ConfigCommands {
-    #[command(about = Lingua::t("cli.cli_commands.manage_config.show_about", &[]).unwrap())]
+    #[command(about = Translation::get("cli.commands.config.show_about"))]
     Show,
-    #[command(about = Lingua::t("cli.cli_commands.manage_config.edit_about", &[]).unwrap())]
+    #[command(about = Translation::get("cli.commands.config.edit_about"))]
     Edit {
-        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_language_help", &[]).unwrap())]
-        lang: Option<String>,
-        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_default_length_help", &[]).unwrap())]
+        #[arg(short, long, value_enum, help = Translation::get("cli.commands.config.mode_help"))]
+        mode: Option<PasswordMode>,
+        #[arg(short = 'p', long, help = Translation::get("cli.commands.config.length_help"))]
         password_length: Option<usize>,
-        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_default_count_help", &[]).unwrap())]
+        #[arg(short, long, help = Translation::get("cli.commands.config.count_help"))]
         count: Option<usize>,
-        #[clap(short, long, help = Lingua::t("cli.cli_commands.manage_config.edit_auto_save_help", &[]).unwrap())]
+        #[arg(short, long, help = Translation::get("cli.commands.config.auto_save_help"))]
         auto_save: Option<bool>,
+        #[arg(short, long, help = Translation::get("cli.commands.config.language_help"))]
+        lang: Option<String>,
     },
-}
-
-pub mod prelude {
-    pub use super::CONFIG;
-    pub use crate::config::Config;
-    pub use crate::logging::LoggingManager;
-    pub use crate::password::{Generator, HealthCheck};
-    pub use crate::tui::{App, run, ui};
-    pub use crate::uninstall::UninstallManager;
-    pub use crate::update::UpdateManager;
-    pub use crate::{Cli, Commands, ConfigCommands, PasswordMode, parse_password_mode};
 }
