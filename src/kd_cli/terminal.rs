@@ -261,8 +261,8 @@ mod sys {
         fn tcgetattr(fd: i32, termios: *mut Termios) -> i32;
         fn tcsetattr(fd: i32, action: i32, termios: *const Termios) -> i32;
         fn poll(fds: *mut PollFd, count: Fds, timeout: i32) -> i32;
-        fn read(fd: i32, buffer: *mut u8, count: usize) -> isize;
-        fn write(fd: i32, buffer: *const u8, count: usize) -> isize;
+        fn read(fd: i32, buffer: *mut std::ffi::c_void, count: usize) -> isize;
+        fn write(fd: i32, buffer: *const std::ffi::c_void, count: usize) -> isize;
         fn ioctl(fd: i32, request: u64, ...) -> i32;
         fn signal(signal: i32, handler: usize) -> usize;
         fn raise(signal: i32) -> i32;
@@ -282,7 +282,7 @@ mod sys {
 
     extern "C" fn restore_cursor(number: i32) {
         if CURSOR_HIDDEN.load(Ordering::SeqCst) {
-            unsafe { write(STDOUT, SHOW_CURSOR.as_ptr(), SHOW_CURSOR.len()) };
+            unsafe { write(STDOUT, SHOW_CURSOR.as_ptr().cast(), SHOW_CURSOR.len()) };
         }
         unsafe {
             signal(number, 0);
@@ -324,7 +324,7 @@ mod sys {
             }
         }
         let mut value = 0u8;
-        (unsafe { read(STDIN, &mut value, 1) } == 1).then_some(value)
+        (unsafe { read(STDIN, (&raw mut value).cast(), 1) } == 1).then_some(value)
     }
 
     fn escape() -> Key {
